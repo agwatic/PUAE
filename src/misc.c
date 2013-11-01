@@ -39,6 +39,9 @@ static int logging_started;
 #define LOG_BOOT "puae_bootlog.txt"
 #define LOG_NORMAL "puae_log.txt"
 
+void fetch_path (TCHAR *name, TCHAR *out, int size);
+void fetch_configurationpath (TCHAR *out, int size);
+
 static int tablet;
 static int axmax, aymax, azmax;
 static int xmax, ymax, zmax;
@@ -820,7 +823,7 @@ void target_fixup_options (struct uae_prefs *p)
 #endif
 }
 
-TCHAR start_path_data[MAX_DPATH];
+//static TCHAR start_path_data[MAX_DPATH];
 
 void fetch_path (TCHAR *name, TCHAR *out, int size)
 {

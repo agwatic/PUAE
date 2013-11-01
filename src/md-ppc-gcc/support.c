@@ -161,10 +161,10 @@ static frame_time_t machdep_calibrate_timebase (void)
     flush_log ();
 
     sync ();
-    last_time = read_processor_time ();
+    last_time = uae_gethrtime();
     for (i = 0; i < num_loops; i++)
 	uae_msleep (1000);
-    best_time = read_processor_time () - last_time;
+    best_time = uae_gethrtime() - last_time;
 
     return best_time / num_loops;
 }

@@ -6,10 +6,19 @@
   * Copyright 1997 Bernd Schmidt
   */
 
+#ifndef UAE_SOUND_H
+#define UAE_SOUND_H
+
+#include "sysconfig.h"
+#include "sysdeps.h"
+
+#include "audio.h"
+#include "options.h"
+
 #define SOUNDSTUFF 1
 #define AUDIO_NAME "sdl"
 
-extern uae_u16 paula_sndbuffer[];
+extern uae_u16 *paula_sndbuffer;
 extern uae_u16 *paula_sndbufpt;
 extern int paula_sndbufsize;
 extern void finish_sound_buffer (void);
@@ -147,3 +156,5 @@ STATIC_INLINE void clear_sound_buffers (void)
 
 #define FILTER_SOUND_TYPE_A500 0
 #define FILTER_SOUND_TYPE_A1200 1
+
+#endif /* UAE_SOUND_H */

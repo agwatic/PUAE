@@ -926,6 +926,7 @@ static void did_rom_select (GtkObject *o)
     gtk_widget_set_sensitive (rom_change_widget, 1);
 
     uae_sem_wait (&gui_sem);
+    // TODO(cstefansen): Hmm, doesn't my friend's code here leak *gui_romname?
     gui_romname = strdup (s);
     uae_sem_post (&gui_sem);
     gtk_label_set_text (GTK_LABEL (rom_text_widget), gui_romname);

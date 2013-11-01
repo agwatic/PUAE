@@ -1,6 +1,3 @@
-#ifndef UAE_SYSDEPS_H
-#define UAE_SYSDEPS_H
-
 /*
   * UAE - The Un*x Amiga Emulator
   *
@@ -14,6 +11,11 @@
   *
   * Copyright 1996, 1997 Bernd Schmidt
   */
+
+#ifndef UAE_INCLUDE_SYSDEPS_H
+#define UAE_INCLUDE_SYSDEPS_H
+
+//#include "sysconfig.h"
 
 #define ECS_DENISE
 
@@ -432,4 +434,4 @@ extern void xfree (const void*);
 #define _vsntprintf vsnprintf
 #define max(a,b) ((a) > (b) ? (a) : (b))
 #define _tcstod strtod
-#endif
+#endif /* UAE_INCLUDE_SYSDEPS_H */

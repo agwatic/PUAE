@@ -660,13 +660,13 @@ void cfgfile_save_options (struct zfile *f, struct uae_prefs *p, int type)
 	if (p->romextident[0])
 		cfgfile_write_str (f, "kickstart_ext_rom=", p->romextident);
 	cfgfile_write_path (f, &p->path_rom, "flash_file", p->flashfile);
-	cfgfile_write_path (f, &p->path_rom, "cart_file", p->cartfile);
 #ifdef ACTION_REPLAY
+	cfgfile_write_path (f, &p->path_rom, "cart_file", p->cartfile);
 	if (p->cartident[0])
 		cfgfile_write_str (f, "cart", p->cartident);
+#endif
 	if (p->amaxromfile[0])
 		cfgfile_write_path (f, &p->path_rom, "amax_rom_file", p->amaxromfile);
-#endif
 
 	cfgfile_write_bool (f, "kickshifter", p->kickshifter);
 
@@ -1600,8 +1600,10 @@ static int cfgfile_parse_host (struct uae_prefs *p, TCHAR *option, TCHAR *value)
 		|| cfgfile_string (option, value, "config_description", p->description, sizeof p->description / sizeof (TCHAR)))
 		return 1;
 
-	if (cfgfile_yesno (option, value, "use_debugger", &p->start_debugger)
-		|| cfgfile_yesno (option, value, "sound_auto", &p->sound_auto)
+	if (cfgfile_yesno (option, value, "sound_auto", &p->sound_auto)
+#ifdef DEBUGGER
+		|| cfgfile_yesno (option, value, "use_debugger", &p->start_debugger)
+#endif 
 		|| cfgfile_yesno (option, value, "sound_stereo_swap_paula", &p->sound_stereo_swap_paula)
 		|| cfgfile_yesno (option, value, "sound_stereo_swap_ahi", &p->sound_stereo_swap_ahi)
 		|| cfgfile_yesno (option, value, "avoid_cmov", &p->avoid_cmov)
@@ -2121,6 +2123,7 @@ static struct uaedev_config_info *getuci(struct uae_prefs *p)
 	return NULL;
 }
 
+#ifdef FILESYS
 struct uaedev_config_info *add_filesys_config (struct uae_prefs *p, int index,
 	TCHAR *devname, TCHAR *volname, TCHAR *rootdir, bool readonly,
 	int secspertrack, int surfaces, int reserved,
@@ -2192,6 +2195,7 @@ struct uaedev_config_info *add_filesys_config (struct uae_prefs *p, int index,
 	xfree (s);
 	return uci;
 }
+#endif
 
 static void parse_addmem (struct uae_prefs *p, TCHAR *buf, int num)
 {
@@ -2372,11 +2376,14 @@ static int cfgfile_parse_hardware (struct uae_prefs *p, const TCHAR *option, TCH
 	 || cfgfile_rom (option, value, "kickstart_ext_rom_file_id", p->romextfile, sizeof p->romextfile / sizeof (TCHAR))
 	 || cfgfile_path (option, value, "amax_rom_file", p->amaxromfile, sizeof p->amaxromfile / sizeof (TCHAR))
 	 || cfgfile_path (option, value, "flash_file", p->flashfile, sizeof p->flashfile / sizeof (TCHAR))
+#ifdef ACTION_REPLAY
 	 || cfgfile_path (option, value, "cart_file", p->cartfile, sizeof p->cartfile / sizeof (TCHAR))
+#endif
 	 || cfgfile_string (option, value, "pci_devices", p->pci_devices, sizeof p->pci_devices / sizeof (TCHAR))
 	 || cfgfile_string (option, value, "ghostscript_parameters", p->ghostscript_parameters, sizeof p->ghostscript_parameters / sizeof (TCHAR)))
 	return 1;
 
+#ifdef ACTION_REPLAY
 	if (cfgfile_strval (option, value, "cart_internal", &p->cart_internal, cartsmode, 0)) {
 		if (p->cart_internal) {
 			struct romdata *rd = getromdatabyid (63);
@@ -2385,6 +2392,7 @@ static int cfgfile_parse_hardware (struct uae_prefs *p, const TCHAR *option, TCH
 		}
 		return 1;
 	}
+#endif
 	if (cfgfile_string (option, value, "kickstart_rom", p->romident, sizeof p->romident / sizeof (TCHAR))) {
 		decode_rom_ident (p->romfile, sizeof p->romfile / sizeof (TCHAR), p->romident, ROMTYPE_ALL_KICK);
 		return 1;
@@ -2393,11 +2401,12 @@ static int cfgfile_parse_hardware (struct uae_prefs *p, const TCHAR *option, TCH
 		decode_rom_ident (p->romextfile, sizeof p->romextfile / sizeof (TCHAR), p->romextident, ROMTYPE_ALL_EXT);
 		return 1;
 	}
+#ifdef ACTION_REPLAY
 	if (cfgfile_string (option, value, "cart", p->cartident, sizeof p->cartident / sizeof (TCHAR))) {
 		decode_rom_ident (p->cartfile, sizeof p->cartfile / sizeof (TCHAR), p->cartident, ROMTYPE_ALL_CART);
 		return 1;
 	}
-
+#endif
 	for (i = 0; i < 4; i++) {
 		_stprintf (tmpbuf, "floppy%d", i);
 		if (cfgfile_path (option, value, tmpbuf, p->floppyslots[i].df, sizeof p->floppyslots[i].df / sizeof (TCHAR)))
@@ -2845,6 +2854,15 @@ static void cfgfile_parse_separated_line (struct uae_prefs *p, TCHAR *line1b, TC
 	}
 }
 
+void cfgfile_parse_line (struct uae_prefs *p, TCHAR *line, int type)
+{
+    TCHAR line1b[CONFIG_BLEN], line2b[CONFIG_BLEN];
+
+    if (!cfgfile_separate_line (line, line1b, line2b))
+        return;
+    cfgfile_parse_separated_line (p, line1b, line2b, type);
+}
+
 void cfgfile_parse_lines (struct uae_prefs *p, const TCHAR *lines, int type)
 {
   TCHAR *buf = my_strdup (lines);
@@ -2861,15 +2879,6 @@ void cfgfile_parse_lines (struct uae_prefs *p, const TCHAR *lines, int type)
     t = t2 + 1;
   }
   xfree (buf);
-}
-
-void cfgfile_parse_line (struct uae_prefs *p, TCHAR *line, int type)
-{
-	TCHAR line1b[CONFIG_BLEN], line2b[CONFIG_BLEN];
-
-	if (!cfgfile_separate_line (line, line1b, line2b))
-		return;
-	cfgfile_parse_separated_line (p, line1b, line2b, type);
 }
 
 static void subst (TCHAR *p, TCHAR *f, int n)
@@ -3755,9 +3764,12 @@ uae_u32 cfgfile_modify (uae_u32 index, TCHAR *parms, uae_u32 size, TCHAR *out, u
 
 	for (i = 0; i < argv; i++) {
 		if (i + 2 <= argv) {
+#ifdef DEBUGGER
 			if (!_tcsicmp (argc[i], "dbg")) {
 				debug_parser (argc[i + 1], out, outsize);
-			} else if (!inputdevice_uaelib (argc[i], argc[i + 1])) {
+			} else
+#endif
+			if (!inputdevice_uaelib (argc[i], argc[i + 1])) {
 				if (!cfgfile_parse_option (&changed_prefs, argc[i], argc[i + 1], 0)) {
 					err = 5;
 					break;
@@ -3909,6 +3921,8 @@ static void default_prefs_mini (struct uae_prefs *p, int type)
 	p->bogomem_size = 0x00080000;
 }
 
+#define ll() printf("---- %s: %s(%d)\n", __FILE__, __FUNCTION__, __LINE__); fflush(stdout);
+
 void default_prefs (struct uae_prefs *p, int type)
 {
 	int i;
@@ -4059,7 +4073,9 @@ void default_prefs (struct uae_prefs *p, int type)
 	p->filesys_no_uaefsdb = 0;
 	p->filesys_custom_uaefsdb = 1;
 	p->picasso96_nocustom = 1;
+#ifdef ACTION_REPLAY
 	p->cart_internal = 1;
+#endif
 	p->sana2 = 0;
 	p->clipboard_sharing = false;
 
@@ -4105,19 +4121,26 @@ void default_prefs (struct uae_prefs *p, int type)
 	_tcscpy (p->floppyslots[2].df, "df2.adf");
 	_tcscpy (p->floppyslots[3].df, "df3.adf");
 
+	ll();
 	configure_rom (p, roms, 0);
 	_tcscpy (p->romfile, "kick.rom");
+	ll();
 	_tcscpy (p->romextfile, "");
+	ll();
 	_tcscpy (p->romextfile2, "");
-	p->romextfile2addr = 0;
+    ll();
+    p->romextfile2addr = 0;
         _tcscpy (p->flashfile, "");
 #ifdef ACTION_REPLAY
         _tcscpy (p->cartfile, "");
 #endif
+    ll();
 
 	_tcscpy (p->path_rom.path[0], "./");
 	_tcscpy (p->path_floppy.path[0], "./");
 	_tcscpy (p->path_hardfile.path[0], "./");
+
+    ll();
 
 	p->prtname[0] = 0;
 	p->sername[0] = 0;
@@ -4179,6 +4202,7 @@ void default_prefs (struct uae_prefs *p, int type)
 	p->input_tablet = TABLET_OFF;
 	p->input_magic_mouse = 0;
 	p->input_magic_mouse_cursor = 0;
+    ll();
 
 	inputdevice_default_prefs (p);
 
@@ -4212,15 +4236,24 @@ void default_prefs (struct uae_prefs *p, int type)
 	  cr->ntsc = 1;
 	  cr->locked = false;
 	  _tcscpy (cr->label, "NTSC");
+    ll();
 
 	zfile_fclose (default_file);
 	default_file = NULL;
+    ll();
+
 	f = zfile_fopen_empty (NULL, "configstore", 100000);
 	if (f) {
 		uaeconfig++;
-		cfgfile_save_options (f, p, 0);
+	    ll();
+#if !defined(__pnacl__)
+	    /* TODO(cstefansen): Enable saving files for PNaCl build. */
+	    cfgfile_save_options (f, p, 0);
+#endif /* !defined(__pnacl__) */
+	    ll();
 		uaeconfig--;
 		cfg_write (&zero, f);
+	    ll();
 		default_file = f;
 	}
 }
@@ -4317,7 +4350,9 @@ static void buildin_default_prefs (struct uae_prefs *p)
 	_tcscpy (p->romfile, "");
 	_tcscpy (p->romextfile, "");
 	_tcscpy (p->flashfile, "");
+#ifdef ACTION_REPLAY
 	_tcscpy (p->cartfile, "");
+#endif
 	_tcscpy (p->amaxromfile, "");
 	p->prtname[0] = 0;
 	p->sername[0] = 0;
@@ -4717,7 +4752,9 @@ static int bip_super (struct uae_prefs *p, int config, int compa, int romcheck)
 	p->scsi = 1;
 	p->uaeserial = 1;
 	p->socket_emu = 1;
+#ifdef ACTION_REPLAY
 	p->cart_internal = 0;
+#endif
 	p->picasso96_nocustom = 1;
 	p->cs_compatible = 1;
 	built_in_chipset_prefs (p);

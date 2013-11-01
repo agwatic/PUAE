@@ -157,13 +157,13 @@ static RETSIGTYPE alarmhandler(int foo)
 #endif
 {
     frame_time_t bar;
-    bar = read_processor_time ();
+    bar = uae_gethrtime();
     if (! first_loop && bar - last_time < best_time)
 	best_time = bar - last_time;
     first_loop = 0;
     if (--loops_to_go > 0) {
 		signal (SIGALRM, alarmhandler);
-		last_time = read_processor_time ();
+		last_time = uae_gethrtime();
 		set_the_alarm ();
     } else {
 		alarm (0);
@@ -195,7 +195,7 @@ int machdep_inithrtimer (void)
 		write_log ("Testing the RDTSC instruction ... ");
 		signal (SIGILL, illhandler);
 		if (setjmp (catch_test) == 0)
-		    read_processor_time ();
+		    uae_gethrtime();
 		signal (SIGILL, SIG_DFL);
 		write_log ("done.\n");
 
@@ -231,7 +231,7 @@ int machdep_inithrtimer (void)
 	    sync (); sync (); sync ();
 
 #ifdef USE_ALARM
-	    last_time = read_processor_time ();
+	    last_time = uae_gethrtime();
 	    set_the_alarm ();
 
 	    while (loops_to_go != 0)
@@ -241,9 +241,9 @@ int machdep_inithrtimer (void)
 	    frame_time_t bar;
 
 	    while (i-- > 0) {
-		last_time = read_processor_time ();
+		last_time = uae_gethrtime();
 		uae_msleep (TIME_DELAY);
-		bar = read_processor_time ();
+		bar = uae_gethrtime();
 		if (i != loops_to_go && bar - last_time < best_time)
 		    best_time = bar - last_time;
 	    }
@@ -273,15 +273,21 @@ int machdep_init (void)
  */
 void machdep_save_options (FILE *f, const struct uae_prefs *p)
 {
+#ifdef HAVE_MACHDEP_TIMER
     cfgfile_write (f, MACHDEP_NAME ".use_tsc=%s\n", p->use_processor_clock ? "yes" : "no");
+#endif
 }
 
 int machdep_parse_option (struct uae_prefs *p, const char *option, const char *value)
 {
+#ifdef HAVE_MACHDEP_TIMER
     return cfgfile_yesno (option, value, "use_tsc", &p->use_processor_clock);
+#endif
 }
 
 void machdep_default_options (struct uae_prefs *p)
 {
+#ifdef HAVE_MACHDEP_TIMER
     p->use_processor_clock = 1;
+#endif
 }

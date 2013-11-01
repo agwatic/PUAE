@@ -9,8 +9,10 @@
  * (c) 1995-2002 Bernd Schmidt
  */
 
-#ifndef UAE_TYPES_H
-#define UAE_TYPES_H
+#ifndef UAE_TYPES_H_
+#define UAE_TYPES_H_
+
+#include "sysconfig.h"
 
 /* If char has more then 8 bits, good night. */
 typedef unsigned char  uae_u8;
@@ -123,4 +125,4 @@ typedef unsigned int      uae_uintptr;
 #endif
 
 
-#endif /* UAE_TYPES_H */
+#endif // UAE_TYPES_H_

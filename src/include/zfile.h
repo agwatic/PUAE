@@ -6,6 +6,8 @@
   * (c) 1996 Samuel Devulder
   */
 
+#include "sysdeps.h"
+
 struct zfile;
 struct zvolume;
 struct zdirectory;
@@ -57,7 +59,8 @@ extern int zfile_iscompressed (struct zfile *z);
 extern int zfile_zcompress (struct zfile *dst, void *src, int size);
 extern int zfile_zuncompress (void *dst, int dstsize, struct zfile *src, int srcsize);
 extern int zfile_gettype (struct zfile *z);
-extern int zfile_zopen (const TCHAR *name, zfile_callback zc, void *user);
+/* TODO cstefansen: commented out; appears unused */
+/* extern int zfile_zopen (const TCHAR *name, zfile_callback zc, void *user); */
 extern TCHAR *zfile_getname (struct zfile *f);
 extern TCHAR *zfile_getfilename (struct zfile *f);
 extern uae_u32 zfile_crc32 (struct zfile *f);

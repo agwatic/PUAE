@@ -16,6 +16,9 @@
 #include "u_deep.h"
 #include "getbits.h"
 
+#ifdef __pnacl__
+#define INLINE // Redefine INLINE to mean nothing rather than 'inline'.
+#endif  // __pnacl__
 
 INLINE USHORT DecodeChar(void);
 INLINE USHORT DecodePosition(void);

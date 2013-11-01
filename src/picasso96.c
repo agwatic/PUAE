@@ -1625,7 +1625,7 @@ static void init_alloc (TrapContext *ctx, int size)
 	picasso96_amemend = picasso96_amem + size;
 	write_log ("P96 RESINFO: %08X-%08X (%d,%d)\n", picasso96_amem, picasso96_amemend, size / PSSO_ModeInfo_sizeof, size);
 	xfree (gwwbuf);
-	gwwpagesize = getpagesize();
+	gwwpagesize = sysconf(_SC_PAGESIZE);
 	gwwbufsize = allocated_gfxmem / gwwpagesize + 1;
 	gwwpagemask = gwwpagesize - 1;
 	gwwbuf = xmalloc (void*, gwwbufsize);

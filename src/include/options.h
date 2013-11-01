@@ -7,13 +7,19 @@
  * Copyright 1995-2001 Bernd Schmidt
  */
 
+#ifndef UAE_INCLUDE_OPTIONS_H
+#define UAE_INCLUDE_OPTIONS_H
+
+#include "sysdeps.h"
+
 #define UAEMAJOR 2
 #define UAEMINOR 3
 #define UAESUBREV 3
 
 typedef enum { KBD_LANG_US, KBD_LANG_DK, KBD_LANG_DE, KBD_LANG_SE, KBD_LANG_FR, KBD_LANG_IT, KBD_LANG_ES, KBD_LANG_FI, KBD_LANG_TR } KbdLang;
 
-struct uaedev_mount_info;
+struct uae_prefs;
+struct zfile;
 
 #define MAX_PATHS 8
 
@@ -690,3 +696,5 @@ STATIC_INLINE void fuzzy_memset_le32_1 (void *p, uae_u32 c, int offset, int len)
 #if defined TARGET_AMIGAOS && defined(__GNUC__)
 #include "od-amiga/amiga-kludges.h"
 #endif
+
+#endif /* UAE_INCLUDE_OPTIONS_H */

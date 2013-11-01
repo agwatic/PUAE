@@ -51,7 +51,9 @@ void consolehook_config (struct uae_prefs *p)
 	//p->win32_automount_drives = 2;
 	//p->win32_automount_cddrives = 2;
 
+#ifdef FILESYS
 	add_filesys_config (p, -1, "DH0", "CLIBOOT", ".", 1, 0, 0, 0, 0, 15, NULL, 0, 0);
+#endif
 }
 
 static void *console_thread (void *v)

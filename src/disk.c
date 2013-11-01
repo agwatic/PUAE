@@ -3833,7 +3833,11 @@ int disk_prevnext_name (TCHAR *imgp, int dir)
 	wrapped = 0;
 retry:
 	_tcscpy (imgl, img);
-	tolower (imgl);
+	{
+	    int pos;
+	    for (pos = 0; pos < MAX_DPATH && imgl[pos] != '\0'; pos++)
+	        tolower(imgl[pos]);
+	}
 	gotone = 0;
 	ret = 0;
 	ps = imgl;

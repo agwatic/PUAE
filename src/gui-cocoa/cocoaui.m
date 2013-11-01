@@ -977,9 +977,11 @@ static BOOL wasFullscreen = NO; // used by ensureNotFullscreen() and restoreFull
 		else [menuItem setState:NSOffState];
 	}
 
-	if (menuAction == @selector(actionReplayFreeze:)) 
+#ifdef ACTION_REPLAY
+	if (menuAction == @selector(actionReplayFreeze:))
 		return ( (hrtmon_flag == ACTION_REPLAY_IDLE) || (action_replay_flag == ACTION_REPLAY_IDLE) );
-	
+#endif
+
 	return YES;
 }
 
@@ -1283,6 +1285,7 @@ static BOOL wasFullscreen = NO; // used by ensureNotFullscreen() and restoreFull
 	[[NSUserDefaults standardUserDefaults] setObject:[file stringByDeletingLastPathComponent] forKey:@"LastUsedFlashPath"];
 }
 
+#ifdef ACTION_REPLAY
 // cartridge rom
 - (void)displayOpenPanelForCartridge:(int)foo
 {
@@ -1340,6 +1343,7 @@ static BOOL wasFullscreen = NO; // used by ensureNotFullscreen() and restoreFull
 		
 	[[NSUserDefaults standardUserDefaults] setObject:[file stringByDeletingLastPathComponent] forKey:@"LastUsedCartPath"];
 }
+#endif // ACTION_REPLAY
 
 // load savestate
 - (void)displayOpenPanelForLoadState:(id)sender

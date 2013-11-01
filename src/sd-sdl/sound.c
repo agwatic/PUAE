@@ -23,10 +23,17 @@
 #include "threaddep/thread.h"
 #include <SDL_audio.h>
 
+#ifdef __native_client__
+// #include "ppapi.h"
+#endif /* __native_client__ */
+
 int have_sound = 0;
 static int statuscnt;
 
-uae_u16 paula_sndbuffer[44100];
+static uae_u16 paula_actual_sndbuffer[44100];
+static uae_u16 paula_actual_sndbuffer_front_buffer[44100];
+uae_u16 *paula_sndbuffer = paula_actual_sndbuffer;
+uae_u16 *paula_sndbuffer_front_buffer = paula_actual_sndbuffer_front_buffer;
 uae_u16 *paula_sndbufpt;
 int paula_sndbufsize;
 static SDL_AudioSpec spec;
@@ -56,11 +63,17 @@ static void sound_callback (void *userdata, Uint8 *stream, int len)
 		return;
 	in_callback = 1;
 
+	long int start = cstef_usec();
 	/* Wait for data to finish.  */
-	uae_sem_wait (&data_available_sem);
-
+	//uae_sem_wait (&data_available_sem);
+    if (0 != uae_sem_trywait (&data_available_sem)) { return; }
+	long int wait_usec = cstef_usec() - start;
+	if (wait_usec > 2000) {
+	    printf("sound_callback waited %d microsecs.\n", wait_usec);
+	    fflush(stdout);
+	}
 	if (!closing_sound) {
-		memcpy (stream, paula_sndbuffer, paula_sndbufsize);
+		memcpy (stream, paula_sndbuffer_front_buffer, paula_sndbufsize);
 
 		/* Notify writer that we're done.  */
 		uae_sem_post (&callback_done_sem);
@@ -84,8 +97,24 @@ void finish_sound_buffer (void)
 	}
 	if (gui_data.sndbuf_status == 3)
 		gui_data.sndbuf_status = 0;
+
+	long int start = cstef_usec();
+//    if (0 == uae_sem_trywait (&callback_done_sem)) {
+//        printf("Underlying sound system is behind or emulator is ahead.\n");
+//        fflush(stdout);
+//    }
+    uae_sem_wait (&callback_done_sem); // Indicates front buffer was copied
+	long int wait_usec = cstef_usec() - start;
+    if (wait_usec > 6000) {
+        printf("Waited for frontbuffer %d microsecs (>6000); emulator is ahead of sound system.\n", wait_usec);
+        fflush(stdout);
+    }
+
+	uae_u16 *temp = paula_sndbuffer;
+	paula_sndbuffer = paula_sndbuffer_front_buffer;
+	paula_sndbuffer_front_buffer = temp;
+
 	uae_sem_post (&data_available_sem);
-	uae_sem_wait (&callback_done_sem);
 }
 
 /* Try to determine whether sound is available. */
@@ -115,7 +144,8 @@ int setup_sound (void)
 	return sound_available;
 }
 
-static int open_sound (void)
+// TODO(cstefansen): removed 'static'; fix sound initialization and add again
+int open_sound (void)
 {
 	if (!currprefs.produce_sound)
 		return 0;
@@ -138,16 +168,22 @@ static int open_sound (void)
 	sample_handler = currprefs.sound_stereo ? sample16s_handler : sample16_handler;
 
 	obtainedfreq = currprefs.sound_freq;
-	write_log ("SDL: sound driver found and configured at %d Hz, buffer is %d ms (%d bytes).\n", spec.freq, spec.samples * 1000 / spec.freq, paula_sndbufsize);
 
 	have_sound = 1;
 	sound_available = 1;
 	update_sound (fake_vblank_hz, 1, currprefs.ntscmode);
 	paula_sndbufsize = spec.samples * 2 * spec.channels;
 	paula_sndbufpt = paula_sndbuffer;
+	uae_sem_post (&callback_done_sem);
 #ifdef DRIVESOUND
 	driveclick_init();
 #endif
+        // Note: the call to SDL_OpenAudio may cause changes to spec, e.g., it may
+        // set spec.samples to whatever the underlying system prefers, thus overriding
+        // the configuration settings. Let's print what we actual ended up with.
+	write_log ("SDL: sound driver found and configured at %d Hz "
+                   "buffer is %d ms (%d bytes).\n", spec.freq,
+                   spec.samples * 1000 / spec.freq, paula_sndbufsize);
 
 	return 1;
 }
@@ -159,8 +195,16 @@ static void *sound_thread (void *dummy)
 
 		switch (cmd) {
 			case 0:
+#ifdef __native_client__
+				write_log("Sound thread received init command; "
+				    "ignored because PPAPI calls must happen "
+				    "on main thread.\n");
+#else
 				open_sound ();
 				uae_sem_post (&sound_init_sem);
+#endif
+
+
 				break;
 			case 1:
 				uae_sem_post (&sound_init_sem);
@@ -181,7 +225,10 @@ static void init_sound_thread (void)
 	uae_sem_init (&data_available_sem, 0, 0);
 	uae_sem_init (&callback_done_sem, 0, 0);
 	uae_sem_init (&sound_init_sem, 0, 0);
+#ifndef __native_client__
+	// TODO(cstefansen): comment explaining why we don't need this
 	uae_start_thread ("Sound", sound_thread, NULL, &tid);
+#endif /* __native_client__ */
 }
 
 void close_sound (void)
@@ -223,8 +270,12 @@ int init_sound (void)
 	closing_sound = 0;
 
 	init_sound_thread ();
+#ifdef __native_client__
+	open_sound();
+#else
 	write_comm_pipe_int (&to_sound_pipe, 0, 1);
 	uae_sem_wait (&sound_init_sem);
+#endif /* _native_client__ */
 	SDL_PauseAudio (0);
 #ifdef DRIVESOUND
 	driveclick_reset ();

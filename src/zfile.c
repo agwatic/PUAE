@@ -34,6 +34,11 @@
 #include <stdarg.h>
 #include "misc.h"
 
+#ifdef __native_client__
+// guidep == gui-html is currently the only way to build with Native Client.
+#include "guidep/ppapi.h"
+#endif /* __native_client__ */
+
 static struct zfile *zlist = 0;
 
 const TCHAR *uae_archive_extensions[] = { "zip", "rar", "7z", "lha", "lzh", "lzx", "tar", NULL };
@@ -1597,24 +1602,25 @@ static void manglefilename(TCHAR *out, const TCHAR *in)
 }
 #endif
 
-int zfile_zopen (const TCHAR *name, zfile_callback zc, void *user)
-{
-	struct zfile *l;
-	int ztype;
-	TCHAR path[MAX_DPATH];
+/* TODO cstefansen: commented out - it appears unnecessary */
+/* int zfile_zopen (const TCHAR *name, zfile_callback zc, void *user) */
+/* { */
+/* 	struct zfile *l; */
+/* 	int ztype; */
+/* 	TCHAR path[MAX_DPATH]; */
 
-	manglefilename (path, name);
-	l = zfile_fopen_2 (path, "rb", ZFD_NORMAL);
-	if (!l)
-		return 0;
-	ztype = iszip (l);
-	if (ztype == 0)
-		zc (l, user);
-/*	else
-		archive_access_scan (l, zc, user, ztype);*/
-	zfile_fclose (l);
-	return 1;
-}
+/* 	manglefilename (path, name); */
+/* 	l = zfile_fopen_2 (path, "rb", ZFD_NORMAL); */
+/* 	if (!l) */
+/* 		return 0; */
+/* 	ztype = iszip (l); */
+/* 	if (ztype == 0) */
+/* 		zc (l, user); */
+/* /\*	else */
+/* 		archive_access_scan (l, zc, user, ztype);*\/ */
+/* 	zfile_fclose (l); */
+/* 	return 1; */
+/* } */
 
 /*
 * fopen() for a compressed file
@@ -1753,10 +1759,33 @@ end:
 }
 #endif
 
-static struct zfile *zfile_fopenx2 (const TCHAR *name, const TCHAR *mode, int mask, int index)
+
+struct zfile *zfile_fopen (const TCHAR *name, const TCHAR *mode, int mask)
+{
+	return zfile_fopen2 (name, mode, mask, 0);
+}
+
+
+struct zfile *zfile_fopen2 (const TCHAR *name, const TCHAR *mode, int mask, int index)
 {
 	struct zfile *f;
 	TCHAR tmp[MAX_DPATH];
+
+#ifdef __native_client__
+	/* For Native Client we fetch all files as URLs. */
+	char* data;
+	size_t length = NaCl_LoadUrl(name, &data);
+	if (length == 0) return NULL;
+
+	f = zfile_create(NULL);
+	f->size = length;
+	f->datasize = length;
+	f->data = data;
+	// NOTE: It is the caller's responsibility to free f->data.
+	return f;
+#endif /* __native_client__ */
+
+
 
 #ifdef _WIN32
 	if (isinternetfile (name))
@@ -1795,24 +1824,6 @@ static struct zfile *zfile_fopenx2 (const TCHAR *name, const TCHAR *mode, int ma
 	}
 #endif
 	return NULL;
-}
-
-static struct zfile *zfile_fopenx (const TCHAR *name, const TCHAR *mode, int mask, int index)
-{
-	struct zfile *zf;
-	//write_log ("zfile_fopen('%s','%s',%08x,%d)\n", name, mode, mask, index);
-	zf = zfile_fopenx2 (name, mode, mask, index);
-	//write_log ("=%p\n", zf);
-	return zf;
-}
-
-struct zfile *zfile_fopen (const TCHAR *name, const TCHAR *mode, int mask)
-{
-	return zfile_fopenx (name, mode, mask, 0);
-}
-struct zfile *zfile_fopen2 (const TCHAR *name, const TCHAR *mode, int mask, int index)
-{
-	return zfile_fopenx (name, mode, mask, index);
 }
 
 struct zfile *zfile_dup (struct zfile *zf)

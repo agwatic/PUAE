@@ -27,6 +27,8 @@
 #include "blit.h"
 #include "savestate.h"
 #include "debug.h"
+#include "writelog.h"
+#include "zfile.h"
 
 /* we must not change ce-mode while blitter is running.. */
 static int blitter_cycle_exact;
@@ -334,8 +336,10 @@ static void blitter_interrupt (int hpos, int done)
 		return;
 	blit_interrupt = 1;
 	send_interrupt (6, 3 * CYCLE_UNIT);
+#ifdef DEBUGGER
 	if (debug_dma)
 		record_dma_event (DMA_EVENT_BLITIRQ, hpos, vpos);
+#endif
 }
 
 static void blitter_done (int hpos)
@@ -344,8 +348,10 @@ static void blitter_done (int hpos)
 	bltstate = blit_startcycles == 0 || !currprefs.blitter_cycle_exact ? BLT_done : BLT_init;
 	blitter_interrupt (hpos, 1);
 	blitter_done_notify (hpos);
+#ifdef DEBUGGER
 	if (debug_dma)
 		record_dma_event (DMA_EVENT_BLITFINISHED, hpos, vpos);
+#endif
 	event2_remevent (ev2_blitter);
 	unset_special (SPCFLAG_BLTNASTY);
 #ifdef BLITTER_DEBUG
@@ -359,7 +365,9 @@ STATIC_INLINE void chipmem_agnus_wput2 (uaecptr addr, uae_u32 w)
 	last_custom_value1 = w;
 #ifndef BLITTER_DEBUG_NO_D
 	chipmem_wput_indirect (addr, w);
+#ifdef DEBUGGER
 	debug_wputpeekdma (addr, w);
+#endif
 #endif
 }
 
@@ -1181,7 +1189,7 @@ static void blit_bltset (int con)
 			blitfc = !!(bltcon1 & 0x4);
 			blitife = !!(bltcon1 & 0x8);
 			if ((bltcon1 & 0x18) == 0x18) {
-				write_log ("weird fill mode\n");
+			    DEBUG_LOG("weird fill mode\n");
 				blitife = 0;
 			}
 		}
@@ -1506,8 +1514,10 @@ void blitter_slowdown (int ddfstrt, int ddfstop, int totalcycles, int freecycles
 
 void restore_blitter_finish (void)
 {
+#ifdef DEBUGGER
 	record_dma_reset ();
 	record_dma_reset ();
+#endif
 	if (blt_statefile_type == 0) {
 		blit_interrupt = 1;
 		if (bltstate == BLT_init) {

@@ -1728,7 +1728,10 @@ STATIC_INLINE void update_fetch (int until, int fm)
 	if (plf_state < plf_passed_stop && ddf_change != vpos && ddf_change + 1 != vpos
 		&& dma
 		&& (fetch_cycle & fetchstart_mask) == (fm_maxplane & fetchstart_mask)
-		&& !badmode && !debug_dma
+		&& !badmode
+#ifdef DEBUGGER
+                && !debug_dma
+#endif
 # if 0
 		/* @@@ We handle this case, but the code would be simpler if we
 		* disallowed it - it may even be possible to guarantee that
@@ -2421,10 +2424,10 @@ static void decide_sprites (int hpos)
 
 		if (spr[i].xpos < 0)
 			continue;
-
+#ifdef DEBUGGER
 		if (!((debug_sprite_mask & magic_sprite_mask) & (1 << i)))
 			continue;
-
+#endif
 		if (! spr[i].armed)
 			continue;
 
@@ -2931,12 +2934,13 @@ void init_hz_fullinit (bool fullinit)
 	maxvpos_total = (currprefs.chipset_mask & CSMASK_ECS_AGNUS) ? 2047 : 511;
 	if (maxvpos_total > MAXVPOS)
 		maxvpos_total = MAXVPOS;
+#ifdef PICASSO96
 	if (!p96refresh_active) {
 		maxvpos_stored = maxvpos;
 		maxhpos_stored = maxhpos;
 		vblank_hz_stored = vblank_hz;
 	}
-
+#endif
 	compute_vsynctime ();
 #ifdef PICASSO96
 	init_hz_p96 ();
@@ -4319,7 +4323,7 @@ static int custom_wput_copper (int hpos, uaecptr addr, uae_u32 value, int noget)
 {
 	int v;
 
-#ifdef DEBUG
+#ifdef DEBUGGER
 	value = debug_wputpeekdma (0xdff000 + addr, value);
 #endif
 	copper_access = 1;
@@ -5102,7 +5106,7 @@ void fpscounter_reset (void)
 	timeframes = 0;
 	frametime2 = 0;
 	bogusframe = 2;
-	lastframetime = read_processor_time ();
+	lastframetime = uae_gethrtime();
 	idletime = 0;
 }
 
@@ -5172,7 +5176,9 @@ static void vsync_handler_pre (void)
 
 	inputdevice_vsync ();
 
+#ifdef FILESYS
 	filesys_vsync ();
+#endif
 
 #ifdef SAMPLER
 	sampler_vsync ();
@@ -5251,10 +5257,12 @@ static void vsync_handler_post (void)
 		record_dma_reset ();
 #endif
 
+#ifdef PICASSO96
 	if (p96refresh_active) {
 		vpos_count = p96refresh_active;
 		vtotal = vpos_count;
 	}
+#endif
 	if ((beamcon0 & (0x20 | 0x80)) != (new_beamcon0 & (0x20 | 0x80)) || (abs (vpos_count - vpos_count_prev)  > 1))
 		init_hz ();
 	if (lof_changed)
@@ -5342,8 +5350,9 @@ static void hsync_scandoubler (void)
 
 	next_lineno++;
 	scandoubled_line = 1;
+#ifdef DEBUGGER
 	debug_dma = 0;
-
+#endif
 	for (i = 0; i < 8; i++) {
 		int diff;
 		bpltmp[i] = bplpt[i];
@@ -5754,14 +5763,14 @@ static void hsync_handler_post (bool isvsync)
 		}
 	}
 #endif
-
+#ifdef BSDSOCKET
 	{
 		extern void bsdsock_fake_int_handler (void);
 		extern int volatile bsd_int_requested;
 		if (bsd_int_requested)
 			bsdsock_fake_int_handler ();
 	}
-
+#endif
 	plfstrt_sprite = plfstrt;
 	/* See if there's a chance of a copper wait ending this line.  */
 	cop_state.hpos = 0;
@@ -5875,7 +5884,9 @@ void custom_reset (int hardreset)
 	//target_reset ();
 	reset_all_systems ();
 	write_log ("Reset at %08X\n", M68K_GETPC);
+#ifdef DEBUGGER
 	memory_map_dump ();
+#endif
 
 	lightpen_x = lightpen_y = -1;
 	lightpen_triggered = 0;
@@ -6243,7 +6254,9 @@ STATIC_INLINE uae_u32 REGPARAM2 custom_wget_1 (int hpos, uaecptr addr, int noput
 			decide_line (hpos);
 			decide_fetch (hpos);
 			decide_blitter (hpos);
+#ifdef DEBUGGER
 			debug_wputpeek (0xdff000 + addr, l);
+#endif
 			r = custom_wput_1 (hpos, addr, l, 1);
 			if (r) { // register don't exist
 				if (currprefs.chipset_mask & CSMASK_ECS_AGNUS) {

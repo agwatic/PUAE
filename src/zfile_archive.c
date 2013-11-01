@@ -27,6 +27,7 @@
 #if defined(__FreeBSD__)
 #include <time.h>
 #include <sys/time.h>
+#include <sys/nacl_syscalls.h>
 #endif
 
 #define unpack_log write_log
@@ -53,7 +54,7 @@ static time_t fromdostime (uae_u32 dd)
 	struct tm* tm_local;
 	tm_local = localtime(&time_now);
 	t -= tm_local->tm_gmtoff;
-#else
+#elif defined(HAVE_TIMEZONE)
 	t -= (time_t)timezone;
 #endif
 	return t;
@@ -317,7 +318,7 @@ struct zvolume *archive_directory_tar (struct zfile *z)
 #if defined(__FreeBSD__)
 			zai.t += tm_local->tm_gmtoff;
 			if (tm_local->tm_isdst)
-#else
+#elif defined(HAVE_DAYLIGHT) && defined(HAVE_TIMEZONE)
 			zai.t += timezone;
 			if (daylight)
 #endif

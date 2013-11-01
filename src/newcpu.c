@@ -1218,7 +1218,7 @@ void init_m68k (void)
 }
 
 struct regstruct regs, mmu_backup_regs;
-struct flag_struct regflags;
+extern struct flag_struct regflags;
 static long int m68kpc_offset;
 
 #define get_ibyte_1(o) get_byte (regs.pc + (regs.pc_p - regs.pc_oldp) + (o) + 1)
@@ -2295,7 +2295,7 @@ void REGPARAM2 Exception (int nr)
 			Exception_mmu (nr);
 		else
 			Exception_normal (nr);
-
+#ifdef DEBUGGER
 	if (debug_illegal && !in_rom (M68K_GETPC)) {
 		int v = nr;
 		if (nr <= 63 && (debug_illegal_mask & ((uae_u64)1 << nr))) {
@@ -2303,6 +2303,7 @@ void REGPARAM2 Exception (int nr)
 			activate_debugger ();
 		}
 	}
+#endif
 	regs.exception = 0;
 	if (cpu_tracer) {
 		cputrace.state = 0;
@@ -2311,7 +2312,7 @@ void REGPARAM2 Exception (int nr)
 
 STATIC_INLINE void do_interrupt (int nr)
 {
-#ifdef DEBUG
+#ifdef DEBUGGER
 	if (debug_dma)
 		record_dma_event (DMA_EVENT_CPUIRQ, current_hpos (), vpos);
 #endif
@@ -3234,13 +3235,14 @@ STATIC_INLINE int do_specialties (int cycles)
 			}
 		}
 #endif
+#ifdef BSDSOCKET
 		{
 			extern void bsdsock_fake_int_handler (void);
 			extern int volatile bsd_int_requested;
 			if (bsd_int_requested)
 				bsdsock_fake_int_handler ();
 		}
-
+#endif
 		if (cpu_tracer > 0) {
 			cputrace.stopped = regs.stopped;
 			cputrace.intmask = regs.intmask;
@@ -3532,7 +3534,9 @@ cont:
 		if (cputrace.needendcycles) {
 			cputrace.needendcycles = 0;
 			write_log ("STARTCYCLES=%08x ENDCYCLES=%08x\n", cputrace.startcycles, get_cycles ());
+#ifdef DEBUGGER
 			log_dma_record ();
+#endif
 		}
 
 		if (r->spcflags || time_for_interrupt ()) {
@@ -3643,34 +3647,6 @@ static void m68k_run_2 (void)
 
 #else
 
-static void opcodedebug (uae_u32 pc, uae_u16 opcode, bool full)
-{
-	struct mnemolookup *lookup;
-	struct instr *dp;
-	uae_u32 addr;
-	int fault;
-
-	if (cpufunctbl[opcode] == op_illg_1)
-		opcode = 0x4AFC;
-	dp = table68k + opcode;
-	for (lookup = lookuptab;lookup->mnemo != dp->mnemo; lookup++)
-		;
-	fault = 0;
-	TRY(prb) {
-		addr = mmu_translate (pc, (regs.mmu_ssw & 4) ? 1 : 0, 0, 0);
-	} CATCH (prb) {
-		fault = 1;
-	}
-	if (!fault) {
-		TCHAR buf[100];
-		if (full)
-			write_log ("mmufixup=%d %04x %04x\n", mmufixup[0].reg, regs.wb3_status, regs.mmu_ssw);
-		m68k_disasm_2 (buf, sizeof buf / sizeof (TCHAR), addr, NULL, 1, NULL, NULL, 0);
-		write_log ("%s\n", buf);
-		if (full)
-			m68k_dumpstate (stdout, NULL);
-	}
-}
 
 /* Aranym MMU 68040  */
 static void m68k_run_mmu040 (void)
@@ -3950,7 +3926,9 @@ static void m68k_run_mmu (void)
 		cpu_cycles &= cycles_mask;
 		cpu_cycles |= cycles_val;
 		if (mmu_triggered)
+#ifdef DEBUGGER
 			mmu_do_hit ();
+#endif
 		if (regs.spcflags) {
 			if (do_specialties (cpu_cycles))
 				return;
@@ -3988,6 +3966,7 @@ void m68k_go (int may_quit)
 	set_cpu_tracer (false);
 
 	in_m68k_go++;
+	write_log("Entering main simulation loop.\n");
 	for (;;) {
 		void (*run_func)(void);
 
@@ -4030,12 +4009,16 @@ void m68k_go (int may_quit)
 #ifdef SAVESTATE
 			/* We may have been restoring state, but we're done now.  */
 			if (isrestore ()) {
+#ifdef DEBUGGER
 				if (debug_dma) {
 					record_dma_reset ();
 					record_dma_reset ();
 				}
+#endif
 				savestate_restore_finish ();
+#ifdef DEBUGGER
 				memory_map_dump ();
+#endif
 				startup = 1;
 				restored = 1;
 			}
@@ -4196,6 +4179,35 @@ static void movemout (TCHAR *out, uae_u16 mask, int mode)
 }
 
 #if defined(DEBUGGER) || defined (ENFORCER)
+static void opcodedebug (uae_u32 pc, uae_u16 opcode, bool full)
+{
+	struct mnemolookup *lookup;
+	struct instr *dp;
+	uae_u32 addr;
+	int fault;
+
+	if (cpufunctbl[opcode] == op_illg_1)
+		opcode = 0x4AFC;
+	dp = table68k + opcode;
+	for (lookup = lookuptab;lookup->mnemo != dp->mnemo; lookup++)
+		;
+	fault = 0;
+	TRY(prb) {
+		addr = mmu_translate (pc, (regs.mmu_ssw & 4) ? 1 : 0, 0, 0);
+	} CATCH (prb) {
+		fault = 1;
+	}
+	if (!fault) {
+		TCHAR buf[100];
+		if (full)
+			write_log ("mmufixup=%d %04x %04x\n", mmufixup[0].reg, regs.wb3_status, regs.mmu_ssw);
+		m68k_disasm_2 (buf, sizeof buf / sizeof (TCHAR), addr, NULL, 1, NULL, NULL, 0);
+		write_log ("%s\n", buf);
+		if (full)
+			m68k_dumpstate (stdout, NULL);
+	}
+}
+
 static void disasm_size (TCHAR *instrname, struct instr *dp)
 {
 #if 0

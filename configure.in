@@ -369,6 +369,14 @@ case $host_os in
       HOST_OS=morphos
       OSDEP=od-amiga
       ;;
+    nacl*)
+      HOST_OS=nacl
+      OSDEP=od-linux
+      ;;
+    pnacl*)
+      HOST_OS=nacl
+      OSDEP=od-linux
+      ;;
     aros)
       HOST_OS=aros
       OSDEP=od-amiga
@@ -633,6 +641,13 @@ else if [[ "$OSDEP" = "od-win32" ]]; then
   TARGET=win32
   TARGETDEP=t-win32.h
   WANT_BSDSOCK=no
+else if [[ "$HOST_OS" = "nacl" ]]; then
+  WANT_JIT=no
+  WANT_AUTOCONFIG=no
+  GUI_DEP=gui-html
+  GUI_LIBS="-lppapi -lppapi_cpp -lppapi_gles2"
+  GUI_NAME="HTML"
+fi
 fi
 fi
 fi
@@ -703,6 +718,10 @@ AC_ARG_WITH(sdl-gui,
 AC_ARG_WITH(cocoa-gfx,
   AS_HELP_STRING([--with-cocoa-gfx], [Use Cocoa library for graphics]),
   [WANT_COCOAGFX=$withval], [])
+
+AC_ARG_WITH(pepper,
+  AS_HELP_STRING([--with-pepper], [Use Pepper for graphics/sound/input (NaCl only)]),
+  [WANT_PEPPER=$withval], [])
 
 AC_ARG_WITH(qt,
   AS_HELP_STRING([--with-qt], [Use QT library for graphics/ui]),
@@ -1011,7 +1030,9 @@ if [[ "x$WANT_SDL" = "xyes" -o "x$GFX_DEP" = "x" ]]; then
         if [[ "x$OSDEP" = "xod-macosx" ]]; then
           GFX_LIBS="-framework OpenGL"
         else
-          GFX_LIBS="-lGL -lGLU"
+          if [[ "$HOST_OS" != "nacl" ]]; then
+            GFX_LIBS="-lGL -lGLU"
+          fi
         fi
       fi
     fi
@@ -1026,6 +1047,22 @@ GFX_LIBS=""
 GFX_CFLAGS=""
 GFX_CPPFLAGS=""
 GFX_LIBS="-framework OpenGL"
+fi
+
+dnl
+if [[ "x$WANT_PEPPER" = "xyes" ]]; then
+  GFX_DEP="gfx-pepper"
+  GFX_LIBS="-lppapi -lppapi_gles2"
+  GFX_NAME="Pepper (PPAPI)"
+  SND_DEP="sd-pepper"
+  SND_LIBS="-lppapi"
+  SND_NAME="Pepper (PPAPI)"
+  JOY_DEP="jd-pepper"
+  JOY_LIBS="-lppapi"
+  JOY_NAME="Pepper (PPAPI)"
+  NEED_THREAD_SUPPORT=yes
+  THREADDEP="td-posix"
+  THREADNAME="POSIX"
 fi
 
 dnl  If we got here and we still haven't found a graphics target
@@ -1247,7 +1284,7 @@ dnl
   fi
  fi
 
-  if [[ "$GUI_DEP" = "gui-none" ]]; then
+  if [[ "$GUI_DEP" = "gui-none" -a "x$WANT_UI" = "xyes"]]; then
     if [[ "x$HAVE_GTK" = "xno" ]]; then
       AC_MSG_WARN([UI wanted, but no UI useable target found])
       NR_ERRORS=`expr $NR_ERRORS + 1`
@@ -2013,6 +2050,7 @@ AC_CONFIG_FILES([Makefile
 		 src/td-win32/Makefile
 		 src/gfx-amigaos/Makefile
 		 src/gfx-beos/Makefile
+		 src/gfx-pepper/Makefile
 		 src/gfx-x11/Makefile
 		 src/gfx-sdl/Makefile
 		 src/gfx-curses/Makefile
@@ -2021,6 +2059,7 @@ AC_CONFIG_FILES([Makefile
 		 src/sd-amigaos/Makefile
 		 src/sd-beos/Makefile
 		 src/sd-none/Makefile
+		 src/sd-pepper/Makefile
 		 src/sd-sdl/Makefile
 		 src/sd-solaris/Makefile
 		 src/sd-uss/Makefile
@@ -2029,11 +2068,13 @@ AC_CONFIG_FILES([Makefile
 		 src/jd-amigaos/Makefile
 		 src/jd-beos/Makefile
 		 src/jd-linuxold/Makefile
+		 src/jd-pepper/Makefile
 		 src/jd-sdl/Makefile
 		 src/gui-none/Makefile
 		 src/gui-beos/Makefile
 		 src/gui-cocoa/Makefile
 		 src/gui-gtk/Makefile
+		 src/gui-html/Makefile
 		 src/gui-muirexx/Makefile
 		 src/gui-qt/Makefile
 		 src/keymap/Makefile
@@ -2046,6 +2087,7 @@ AM_CONDITIONAL(TARGET_WIN32, test x$OSDEP = xod-win32)
 AM_CONDITIONAL(TARGET_LINUX, test x$OSDEP = xod-linux)
 AM_CONDITIONAL(BUILD_MACOSX_BUNDLE, test x$OSDEP = xod-macosx)
 AM_CONDITIONAL(IS_QT, test x$WANT_QT = xyes)
+AM_CONDITIONAL(TARGET_NACL, test x$HOST_OS = xnacl)
 AM_CONDITIONAL(SDL_UI, test x$WANT_SDL_UI = xyes)
 
 AC_SUBST(UAE_CFLAGS)

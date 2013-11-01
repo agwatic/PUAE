@@ -2133,7 +2133,6 @@ uae_u8 *restore_action_replay (uae_u8 *src)
 }
 
 #endif /* SAVESTATE */
-#endif /* ACTION_REPLAY */
 
 #define NPSIZE 65536
 
@@ -2225,3 +2224,5 @@ void descramble_nordicpro (uae_u8 *buf, int size, int odd)
 		descramble1a (buf, size);
 	}
 }
+
+#endif /* ACTION_REPLAY */

@@ -1,7 +1,10 @@
 AM_CFLAGS = @UAE_CFLAGS@
 AM_CPPFLAGS = @UAE_CPPFLAGS@
 AM_CPPFLAGS += -I$(top_srcdir)/src/include -I$(top_builddir)/src -I$(top_srcdir)/src -I$(top_srcdir)
-LIBS = -L/usr/lib -lpthread -lstdc++
+LIBS = -lpthread -lstdc++
+if !TARGET_NACL # = Using Native Client/Pepper
+LIBS += -L/usr/lib
+endif
 if IS_QT
 QT_INCPATH = $(shell qmake -query QT_INSTALL_HEADERS)
 QT_INSPATH = $(shell qmake -query QT_INSTALL_DATA)
@@ -27,10 +30,11 @@ SUBDIRS = \
 
 DIST_SUBDIRS = \
 	md-generic md-68k md-i386-gcc md-ppc md-ppc-gcc md-amd64-gcc \
-	gfx-amigaos gfx-beos gfx-x11 gfx-sdl gfx-curses gfx-svga gfx-cocoa \
-	sd-none sd-alsa sd-amigaos sd-beos sd-sdl sd-solaris sd-uss \
-	jd-none jd-amigainput jd-amigaos jd-beos jd-linuxold jd-sdl \
-	gui-none gui-beos gui-cocoa gui-gtk gui-muirexx \
+	gfx-amigaos gfx-beos gfx-cocoa gfx-curses gfx-pepper gfx-sdl \
+	gfx-svga gfx-x11 \
+	sd-none sd-alsa sd-amigaos sd-beos sd-pepper sd-sdl sd-solaris sd-uss \
+	jd-none jd-amigainput jd-amigaos jd-beos jd-linuxold jd-pepper jd-sdl \
+	gui-none gui-beos gui-cocoa gui-gtk gui-html gui-muirexx \
 	od-generic od-amiga od-beos od-linux od-macosx od-win32 \
 	td-none td-amigaos td-beos td-posix td-sdl td-win32 \
 	keymap caps archivers/dms archivers/zip
@@ -57,8 +61,14 @@ DISTCLEANFILES = \
 	machdep osdep threaddep gfxdep sounddep joydep guidep \
 	target.h md-fpp.h
 
+if TARGET_NACL # = Using Native Client/Pepper
+bin_PROGRAMS  = \
+	uae
+else
 bin_PROGRAMS  = \
 	uae readdisk make_hdf
+endif
+
 
 if BUILD_MACOSX_BUNDLE
 bundle = @PACKAGE_NAME@.app

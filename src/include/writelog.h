@@ -26,4 +26,10 @@ extern void jit_abort (const char *fmt, ...);
 extern void write_dlog (const char *format, ...);
 extern char *setconsolemode (char *buffer, int maxlen);
 
+#ifdef DEBUG
+#define DEBUG_LOG write_log
+#else
+#define DEBUG_LOG(...) do ; while(0)
+#endif
+
 #endif /* WRITELOG_H */

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+  <META HTTP-EQUIV="Expires" CONTENT="-1" />
+  <link href='http://fonts.googleapis.com/css?family=Belleza' rel='stylesheet' type='text/css'>
+  <style type="text/css">
+    html { background: #333;
+           color: #eee;
+           font-family: Belleza, helvetica, arial, sans-serif;
+           font-size: 85%;
+           padding-left: 1.5cm;
+           padding-right: 1.5cm;
+           padding-bottom: 0.60cm;
+	}
+    body { width: 720px; margin-left: auto; margin-right: auto; }
+    p { margin-top: 6px; margin-bottom: 4px; color: darkgrey;}
+    .footer p { text-align: center; }
+    a, a:visited { color: darkseagreen; } 
+    #status_field, #status_field a, #status_field a:visited { color: red; }
+    #uae_container {
+    	position: relative;
+    	background: #000;
+    	height: 568px;
+    	overflow: hidden;
+    }
+	#overlay {
+		position: absolute;
+    	top: 40%;
+	    width: 720px;
+		vertical-align: middle;
+		text-align: center;
+	}
+	#progress {
+		display: inline-block;
+		margin-left: auto;
+		margin-right: auto;
+	}
+	#progress_text {
+		color: #fff;
+	}
+    h1 { text-align: center; font-size: 24pt; margin-top: 0.5cm; margin-bottom: 0.15cm; }
+    h2 { text-align: center; font-size: 14pt; margin-top: 0.15cm; margin-bottom: 0.15cm; }
+    input, button, select { }
+  </style>
+</head>
+<body id="body">
+<h1>The Universal Amiga Emulator</h1>
+<h2>A <i>Portable Native Client</i> demo</h2>
+<p id="status_field">&nbsp;</p>
+
+<div id="uae_container">
+	<div id="overlay">
+	  <div id="progress">
+	    <img src="loading.gif" id="loading_animation" alt="Animated loading indicator" />
+	    <p id='progress_text'>Loading...</p>
+	  </div>
+	</div>	
+  <!-- Note: Attributes are passed to UAEInstance::Init(). -->
+  <embed id="uae"
+         width="720"
+         height="568"
+         src="uae.nmf"
+         type="application/x-pnacl"
+         />
+</div>
+
+<p>Click inside the Amiga and press Ctrl-Shift-F for full-screen. Press Esc to release the mouse and/or leave full-screen mode.</p>
+
+<br />
+
+<div width="50%" style="float: left;">
+<p>Kickstart ROM <input type="file" id="rom" disabled /></p>
+<p>Drive 0 (df0:) <button id="eject0Btn" disabled>Eject</button> <input type="file" id="df0" disabled /></p>
+<p>Drive 1 (df1:) <button id="eject1Btn" disabled>Eject</button> <input type="file" id="df1" disabled /></p>
+</div><div width="50%">
+<p><button id="resetBtn" disabled>Reset Amiga</button></p>
+<p>Joy Port 0: <select id="port0" disabled>
+  <option value="mouse" selected>Mouse</option> 
+  <option value="joy1">Gamepad 1</option>
+  <option value="kbd1">Keyboard (ADSW tab Q)</option>
+  <option value="none">None</option>
+</select></p>
+<p>Joy Port 1: <select id="port1" disabled>
+  <option value="joy0">Gamepad 0</option> 
+  <option value="kbd0" selected>Keyboard (&#8592;&#8594;&#8595;&#8593; space . , /)</option>
+  <option value="none">None</option>
+</select></p>
+</div>
+
+<br />
+
+<div class="footer">
+<p>
+<a href="TODO(cstefansen)">FAQ</a> &nbsp;&nbsp; <a href="TODO(cstefansen)">Contact</a>
+&nbsp;&nbsp; <a href="http://https://github.com/cstefansen/uae">Source code</a>
+</p>
+<p>
+The Amiga Kickstart ROM is provided under license by <a href="http://www.cloanto.it/">Cloanto Italia srl.</a>
+</p>
+<p>Ported by <a href="https://plus.google.com/111857822126789860534/posts">Christian Stefansen</a>.
+This port is dedicated to Mumm, Karsten, Wulff, and K.P. in fond remembrance of our childhood and the many hours of playing Amiga 500 games together.</p>
+</div>
+
+<script src="uae.js"></script>
+
+</body>
+</html>

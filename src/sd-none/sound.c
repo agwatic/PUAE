@@ -14,6 +14,8 @@
 #include "gensound.h"
 #include "sounddep/sound.h"
 
+int have_sound = 0;
+
 int init_sound (void)
 {
     currprefs.produce_sound = 0;
@@ -24,6 +26,10 @@ int setup_sound (void)
 {
     currprefs.produce_sound = 0;
     return 1;
+}
+
+void clear_sound_buffers (void)
+{
 }
 
 void close_sound (void)

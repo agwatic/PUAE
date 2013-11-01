@@ -1045,15 +1045,18 @@ int inputdevice_is_tablet (void)
 	return v ? 1 : 0;
 }
 
+#ifdef FILESYS
 static int getmhoffset (void)
 {
 	if (!uae_boot_rom)
 		return 0;
 	return get_long (rtarea_base + bootrom_header + 7 * 4) + bootrom_header;
 }
+#endif
 
 static void mousehack_reset (void)
 {
+#ifdef FILESYS
 	int off;
 
 	dimensioninfo_width = dimensioninfo_height = 0;
@@ -1065,6 +1068,7 @@ static void mousehack_reset (void)
 	off = getmhoffset ();
 	if (off)
 		rtarea[off + MH_E] = 0;
+#endif
 }
 
 static void mousehack_enable (void)
@@ -1095,6 +1099,7 @@ void input_mousehack_mouseoffset (uaecptr pointerprefs)
 
 void input_mousehack_status (int mode, uaecptr diminfo, uaecptr dispinfo, uaecptr vp, uae_u32 moffset)
 {
+#ifdef FILESYS
 	if (mode == 0) {
 		uae_u8 v = rtarea[getmhoffset ()];
 		v |= 0x40;
@@ -1131,12 +1136,14 @@ void input_mousehack_status (int mode, uaecptr diminfo, uaecptr dispinfo, uaecpt
 		else if (mousehack_alive_cnt > 0)
 			mousehack_alive_cnt = 100;
 	}
+#endif
 }
 
 void get_custom_mouse_limits (int *w, int *h, int *dx, int *dy, int dbl);
 
 void inputdevice_tablet_strobe (void)
 {
+#ifdef FILESYS
 	uae_u8 *p;
 	uae_u32 off;
 
@@ -1148,10 +1155,12 @@ void inputdevice_tablet_strobe (void)
 	off = getmhoffset ();
 	p = rtarea + off;
 	p[MH_CNT]++;
+#endif
 }
 
 void inputdevice_tablet (int x, int y, int z, int pressure, uae_u32 buttonbits, int inproximity, int ax, int ay, int az)
 {
+#ifdef FILESYS
 	uae_u8 *p;
 	uae_u8 tmp[MH_END];
 	uae_u32 off;
@@ -1242,10 +1251,12 @@ void inputdevice_tablet (int x, int y, int z, int pressure, uae_u32 buttonbits, 
 		return;
 	rtarea[off + MH_E] = 0xc0 | 2;
 	p[MH_CNT]++;
+#endif
 }
 
 void inputdevice_tablet_info (int maxx, int maxy, int maxz, int maxax, int maxay, int maxaz, int xres, int yres)
 {
+#ifdef FILESYS
 	uae_u8 *p;
 
 	if (!uae_boot_rom)
@@ -1272,6 +1283,7 @@ void inputdevice_tablet_info (int maxx, int maxy, int maxz, int maxax, int maxay
 	p[MH_MAXAY + 1] = maxay;
 	p[MH_MAXAZ] = maxaz >> 8;
 	p[MH_MAXAZ + 1] = maxaz;
+#endif
 }
 
 
@@ -1279,6 +1291,7 @@ void getgfxoffset (int *dx, int *dy, int*,int*);
 
 static void inputdevice_mh_abs (int x, int y)
 {
+#ifdef FILESYS
 	uae_u8 *p;
 	uae_u8 tmp[4];
 	uae_u32 off;
@@ -1302,11 +1315,13 @@ static void inputdevice_mh_abs (int x, int y)
 	rtarea[off + MH_E] = 0xc0 | 1;
 	p[MH_CNT]++;
 	tablet_data = 1;
+#endif
 }
 
 #if 0
 static void inputdevice_mh_abs_v36 (int x, int y)
 {
+#ifdef FILESYS
 	uae_u8 *p;
 	uae_u8 tmp[MH_END];
 	uae_u32 off;
@@ -1421,6 +1436,7 @@ static void inputdevice_mh_abs_v36 (int x, int y)
 		return;
 	p[MH_CNT]++;
 	tablet_data = 1;
+#endif /* FILESYS */
 }
 #endif
 
@@ -2365,7 +2381,12 @@ void inputdevice_handle_inputcode (void)
 
 	if (code == 0)
 		goto end;
-	if (needcputrace (code) && can_cpu_tracer () == true && is_cpu_tracer () == false && !input_play && !input_record && !debugging) {
+	if (needcputrace (code) && can_cpu_tracer () == true && 
+		is_cpu_tracer () == false && !input_play && !input_record
+#ifdef DEBUGGER
+		&& !debugging
+#endif
+		) {
 		if (set_cpu_tracer (true)) {
 			tracer_enable = 1;
 			return; // wait for next frame
@@ -3219,7 +3240,7 @@ static void setbuttonstateall (struct uae_input_device *id, struct uae_input_dev
 	if (input_play)
 		return;
 	if (!id->enabled) {
-		frame_time_t t = read_processor_time ();
+		frame_time_t t = uae_gethrtime();
 		if (state) {
 			switchdevice_timeout = t;
 		} else {

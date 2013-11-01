@@ -6,6 +6,11 @@
   * Copyright 1996 Bernd Schmidt
   */
 
+#ifndef UAE_INCLUDE_GUI_H
+#define UAE_INCLUDE_GUI_H
+
+#include "sysdeps.h"
+
 extern int gui_init (void);
 extern int gui_update (void);
 extern void gui_exit (void);
@@ -13,16 +18,20 @@ extern void gui_led (int, int);
 extern void gui_handle_events (void);
 extern void gui_filename (int, const TCHAR *);
 extern void gui_fps (int fps, int idle);
+/* TODO(cstefansen): gui_changesettings seems unused; remove? */
 extern void gui_changesettings (void);
 extern void gui_lock (void);
 extern void gui_unlock (void);
 extern void gui_flicker_led (int, int, int);
 extern void gui_disk_image_change (int, const TCHAR *, bool writeprotected);
+/* TODO(cstefansen): gui_ledstate seems unused; remove? */
 extern unsigned int gui_ledstate;
 extern void gui_display (int shortcut);
 
 extern void gui_gameport_button_change (int port, int button, int onoff);
 extern void gui_gameport_axis_change (int port, int axis, int state, int max);
+
+extern void gui_message (const char *format,...);
 
 extern bool no_gui, quit_to_gui;
 
@@ -80,3 +89,4 @@ typedef enum {
     NUMSG_NOCAPS, NUMSG_OLDCAPS, NUMSG_KICKREP, NUMSG_KICKREPNO
 } notify_user_msg;*/
 
+#endif /* UAE_INCLUDE_GUI_H */

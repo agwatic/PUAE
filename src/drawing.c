@@ -499,7 +499,7 @@ void get_custom_mouse_limits (int *pw, int *ph, int *pdx, int *pdy, int dbl)
 	delay1 = (firstword_bplcon1 & 0x0f) | ((firstword_bplcon1 & 0x0c00) >> 6);
 	delay2 = ((firstword_bplcon1 >> 4) & 0x0f) | (((firstword_bplcon1 >> 4) & 0x0c00) >> 6);
 	if (delay1 == delay2)
-		;//dx += delay1;
+		;//dx += delay1; // TODO: fix this
 
 	dx = xshift (dx, res_shift);
 
@@ -2422,7 +2422,9 @@ static void draw_debug_status_line (int line)
 	xlinebuffer = gfxvidinfo.linemem;
 	if (xlinebuffer == 0)
 		xlinebuffer = row_map[line];
+#ifdef DEBUGGER
 	debug_draw_cycles (xlinebuffer, gfxvidinfo.pixbytes, line, gfxvidinfo.width, gfxvidinfo.height, xredcolors, xgreencolors, xbluecolors);
+#endif
 }
 
 #define LIGHTPEN_HEIGHT 12

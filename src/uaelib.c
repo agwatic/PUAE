@@ -340,6 +340,7 @@ static uae_u32 emulib_Minimize (void)
 	return 0; // OSDEP_minimize_uae();
 }
 
+#ifdef FILESYS
 static int native_dos_op (uae_u32 mode, uae_u32 p1, uae_u32 p2, uae_u32 p3)
 {
 	TCHAR tmp[MAX_DPATH];
@@ -361,6 +362,8 @@ static int native_dos_op (uae_u32 mode, uae_u32 p1, uae_u32 p2, uae_u32 p3)
 	}
 	return 0;
 }
+#endif
+
 #ifndef UAEGFX_INTERNAL
 extern uae_u32 picasso_demux (uae_u32 arg, TrapContext *context);
 #endif
@@ -411,7 +414,9 @@ static uae_u32 REGPARAM2 uaelib_demux2 (TrapContext *context)
 #ifdef DEBUGGER
 	case 84: return mmu_init (ARG1, ARG2, ARG3);
 #endif
+#ifdef FILESYS
 	case 85: return native_dos_op (ARG1, ARG2, ARG3, ARG4);
+#endif
 	case 86:
 		if (valid_address (ARG1, 1)) {
 			write_log ("DBG: %s\n", get_real_address (ARG1));

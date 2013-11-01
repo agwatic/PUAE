@@ -1252,7 +1252,9 @@ uae_u8 *REGPARAM2 default_xlate (uaecptr a)
 					}
 					write_log ("\n");
 				}
+#ifdef DEBUGGER
 				memory_map_dump ();
+#endif
 			}
 			be_cnt++;
 			if (be_cnt > 1000) {
@@ -2668,7 +2670,10 @@ void memory_reset (void)
 		if (extendedkickmem2_size) {
 			map_banks (&extendedkickmem2_bank, 0xa8, 16, 0);
 		} else {
-			struct romdata *rd = getromdatabypath (currprefs.cartfile);
+			struct romdata *rd;
+#ifdef ACTION_REPLAY
+			rd = getromdatabypath (currprefs.cartfile);
+#endif
 			if (!rd || rd->id != 63) {
 				if (extendedkickmem_type == EXTENDED_ROM_CD32 || extendedkickmem_type == EXTENDED_ROM_KS)
 					map_banks (&extendedkickmem_bank, 0xb0, 8, 0);
@@ -2817,7 +2822,7 @@ void map_banks (addrbank *bank, int start, int size, int realsize)
 
 	//write_log ("MAP_BANK %04X0000 %d %s\n", start, size, bank->name);
 
-#ifdef DEBUG
+#ifdef DEBUGGER
 	old = debug_bankchange (-1);
 #endif
 #ifdef JIT
@@ -2849,7 +2854,7 @@ void map_banks (addrbank *bank, int start, int size, int realsize)
 			put_mem_bank (bnr << 16, bank, realstart << 16);
 			real_left--;
 		}
-#ifdef DEBUG
+#ifdef DEBUGGER
 		debug_bankchange (old);
 #endif
 		return;
@@ -2874,7 +2879,7 @@ void map_banks (addrbank *bank, int start, int size, int realsize)
 			real_left--;
 		}
 	}
-#ifdef DEBUG
+#ifdef DEBUGGER
 	debug_bankchange (old);
 #endif
 	fill_ce_banks ();

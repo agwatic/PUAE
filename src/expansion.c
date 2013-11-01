@@ -210,7 +210,9 @@ static void expamem_init_last (void)
 {
 	expamem_init_clear2 ();
 	write_log ("Memory map after autoconfig:\n");
+#ifdef DEBUGGER
 	memory_map_dump();
+#endif
 }
 
 
@@ -1330,10 +1332,12 @@ static uaecptr check_boot_rom (void)
 		if (valid_address (RTAREA_DEFAULT, 65536))
 			b = RTAREA_BACKUP;
 	}
+#ifdef FILESYS
 	if (nr_directory_units (NULL))
 		return b;
 	if (nr_directory_units (&currprefs))
 		return b;
+#endif
 	if (currprefs.socket_emu)
 		return b;
 	if (currprefs.uaeserial)

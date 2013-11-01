@@ -7,6 +7,9 @@
  * Copyright 2001-2002 Toni Wilen
  */
 
+#include "options.h"
+#include "sysdeps.h"
+
 #define DIR_LEFT_BIT 0
 #define DIR_RIGHT_BIT 1
 #define DIR_UP_BIT 2
@@ -169,7 +172,7 @@ extern void inputdevice_get_eventname (const struct inputevent *ie, TCHAR *out);
 extern void inputdevice_compa_prepare_custom (struct uae_prefs *prefs, int index);
 extern void inputdevice_compa_clear (struct uae_prefs *prefs, int index);
 extern int intputdevice_compa_get_eventtype (int evt, int **axistable);
-
+extern void inputdevice_release_all_keys (void);
 
 extern uae_u16 potgo_value;
 extern uae_u16 POTGOR (void);
