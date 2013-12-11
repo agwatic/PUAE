@@ -35,9 +35,9 @@
 #include "misc.h"
 
 #ifdef __native_client__
-// guidep == gui-html is currently the only way to build with Native Client.
+/* guidep == gui-html is currently the only way to build with Native Client. */
 #include "guidep/ppapi.h"
-#endif /* __native_client__ */
+#endif  /* __native_client__ */
 
 static struct zfile *zlist = 0;
 
@@ -147,7 +147,7 @@ static void zcache_check (void)
 static struct zcache *zcache_put (const TCHAR *name, struct zdiskimage *data)
 {
 	struct zcache *zc;
-	
+
 	zcache_check ();
 	zc = xcalloc (struct zcache, 1);
 	zc->next = zcachedata;
@@ -1602,7 +1602,7 @@ static void manglefilename(TCHAR *out, const TCHAR *in)
 }
 #endif
 
-/* TODO cstefansen: commented out - it appears unnecessary */
+/* TODO(cstefansen): verify zfile_zopen is not needed and remove. */
 /* int zfile_zopen (const TCHAR *name, zfile_callback zc, void *user) */
 /* { */
 /* 	struct zfile *l; */
@@ -1759,7 +1759,6 @@ end:
 }
 #endif
 
-
 struct zfile *zfile_fopen (const TCHAR *name, const TCHAR *mode, int mask)
 {
 	return zfile_fopen2 (name, mode, mask, 0);
@@ -1784,8 +1783,6 @@ struct zfile *zfile_fopen2 (const TCHAR *name, const TCHAR *mode, int mask, int 
 	// NOTE: It is the caller's responsibility to free f->data.
 	return f;
 #endif /* __native_client__ */
-
-
 
 #ifdef _WIN32
 	if (isinternetfile (name))
@@ -1841,7 +1838,7 @@ struct zfile *zfile_dup (struct zfile *zf)
 		memcpy (nzf->data, zf->data, zf->size);
 		nzf->size = zf->size;
 		nzf->datasize = zf->datasize;
-	} else { 
+	} else {
 		if (zf->zipname) {
 			nzf = openzip (zf->name);
 			if (nzf)

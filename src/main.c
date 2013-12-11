@@ -60,8 +60,6 @@
 #include "SDL.h"
 #endif
 
-#define ll() printf("---- %s: %s(%d)\n", __FILE__, __FUNCTION__, __LINE__); fflush(stdout);
-
 struct uae_prefs currprefs, changed_prefs;
 int config_changed;
 
@@ -102,7 +100,8 @@ static void show_version_full (void)
 	write_log ("Copyright 1995-2002 Bernd Schmidt\n");
 	write_log ("          1999-2011 Toni Wilen\n");
 	write_log ("          2003-2007 Richard Drummond\n");
-	write_log ("          2006-2011 Mustafa 'GnoStiC' Tufan\n\n");
+	write_log ("          2006-2011 Mustafa 'GnoStiC' Tufan\n");
+	write_log ("          2013      Christian Stefansen\n\n");
 	write_log ("See the source for a full list of contributors.\n");
 	write_log ("This is free software; see the file COPYING for copying conditions.  There is NO\n");
 	write_log ("warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n");
@@ -833,26 +832,23 @@ static int real_main2 (int argc, TCHAR **argv)
 	__try
 #endif
 	{
-	ll();
+
 #ifdef USE_SDL
 	int result = (SDL_Init (SDL_INIT_TIMER | SDL_INIT_JOYSTICK | SDL_INIT_NOPARACHUTE) == 0);
 	if (result)
 		atexit (SDL_Quit);
 #endif
 	config_changed = 1;
-	ll();
 	if (restart_config[0]) {
-	    ll();
 		default_prefs (&currprefs, 0);
-		ll();
 		fixup_prefs (&currprefs);
 	}
-	ll();
+
 	if (! graphics_setup ()) {
 		write_log ("Graphics Setup Failed\n");
 		exit (1);
 	}
-	ll();
+
 #ifdef NATMEM_OFFSET
 	preinit_shm ();
 #endif
@@ -861,6 +857,7 @@ static int real_main2 (int argc, TCHAR **argv)
 		parse_cmdline_and_init_file (argc, argv);
 	else
 		currprefs = changed_prefs;
+
 	uae_inithrtimer ();
 
 	if (!machdep_init ()) {
@@ -868,11 +865,13 @@ static int real_main2 (int argc, TCHAR **argv)
 		restart_program = 0;
 		return -1;
 	}
+
 	if (console_emulation) {
 		consolehook_config (&currprefs);
 		fixup_prefs (&currprefs);
 	}
-	if (!setup_sound ()) {
+
+	if (! setup_sound ()) {
 		write_log ("Sound driver unavailable: Sound output disabled\n");
 		currprefs.produce_sound = 0;
 	}
@@ -910,9 +909,9 @@ static int real_main2 (int argc, TCHAR **argv)
 	changed_prefs = currprefs;
 	target_run ();
 	/* force sound settings change */
-	ll();
-	// TODO: check if this line was already there: currprefs.produce_sound = 0;
-	ll();
+#ifndef __native_client__
+	currprefs.produce_sound = 0;
+#endif  /* !__native_client__ */
 
 #ifdef AUTOCONFIG
 	/* Install resident module to get 8MB chipmem, if requested */
@@ -965,14 +964,15 @@ static int real_main2 (int argc, TCHAR **argv)
 	init_m68k (); /* must come after reset_frame_rate_hack (); */
 
 	gui_update ();
+
 	if (graphics_init ()) {
 #ifdef DEBUGGER
 		setup_brkhandler ();
 		if (currprefs.start_debugger && debuggable ())
 			activate_debugger ();
 #endif
-		if (!init_audio ()) {
 
+		if (!init_audio ()) {
 			if (sound_available && currprefs.produce_sound > 1) {
 				write_log ("Sound driver unavailable: Sound output disabled\n");
 			}
@@ -1029,7 +1029,7 @@ int main (int argc, TCHAR **argv)
 	real_main (argc, argv);
 	return 0;
 }
-#endif /* __native_client */
+#endif  /* __native_client */
 #endif
 
 #ifdef SINGLEFILE

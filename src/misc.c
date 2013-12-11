@@ -39,8 +39,10 @@ static int logging_started;
 #define LOG_BOOT "puae_bootlog.txt"
 #define LOG_NORMAL "puae_log.txt"
 
-void fetch_path (TCHAR *name, TCHAR *out, int size);
-void fetch_configurationpath (TCHAR *out, int size);
+void fetch_path(TCHAR *name, TCHAR *out, int size);
+void fetch_configurationpath(TCHAR *out, int size);
+
+void serialuartbreak(int v);
 
 static int tablet;
 static int axmax, aymax, azmax;
@@ -116,7 +118,7 @@ int vsync_switchmode (int hz, int oldhz)
 	hz = hz * dbl;
 
 	found = NULL;
-        
+
 /*	for (i = 0; md->DisplayModes[i].depth >= 0 && !found; i++) {
 		struct PicassoResolution *r = &md->DisplayModes[i];
 		if (r->res.width == w && r->res.height == h && r->depth == d) {
@@ -587,7 +589,7 @@ int target_cfgfile_load (struct uae_prefs *p, char *filename, int type, int isde
 	if (type == 0) {
 		default_prefs (p, type);
 	}
-		
+
 	//regqueryint (NULL, "ConfigFile_NoAuto", &ct2);
 	v = cfgfile_load (p, fname, &type2, ct2, isdefault ? 0 : 1);
 	if (!v)
@@ -822,8 +824,6 @@ void target_fixup_options (struct uae_prefs *p)
 	//rp_fixup_options (p);
 #endif
 }
-
-//static TCHAR start_path_data[MAX_DPATH];
 
 void fetch_path (TCHAR *name, TCHAR *out, int size)
 {
@@ -1397,7 +1397,7 @@ double vblank_calibrate (double approx_vblank, bool waitonly)
   frame_time_t t1, t2;
   double tsum, tsum2, tval, tfirst;
   int maxcnt, maxtotal, total, cnt, tcnt2;
-  
+
   if (remembered_vblank > 0)
     return remembered_vblank;
   if (waitonly) {

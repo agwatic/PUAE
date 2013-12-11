@@ -6,11 +6,11 @@
   * Copyright 1997 Bernd Schmidt
   * Copyright 2003 Richard Drummond
   * Copyright 2013 Christian Stefansen
-  * 
+  *
   */
 
-#include <ppapi/c/pp_point.h>
-#include <ppapi/c/ppb_input_event.h>
+#include "ppapi/c/pp_point.h"
+#include "ppapi/c/ppb_input_event.h"
 
 #include "hotkeys.h"
 #include "inputdevice.h"
@@ -18,7 +18,7 @@
 #include "keybuf.h"
 #include "keymap/keymap.h"
 #include "options.h"
-#ifdef PICASSO96    
+#ifdef PICASSO96
 #include "picasso96.h"
 #endif /* PICASSO96 */
 #include "writelog.h"
@@ -31,10 +31,10 @@
 /* From misc.c. */
 extern void my_kbd_handler (int keyboard, int scancode, int newstate);
 /* From drawing.h. */
+extern void reset_drawing();
 /* TODO(cstefansen): Fix drawing.h so it can be included in isolation without
  * tons of unsatisfied dependencies.
  */
-extern void reset_drawing();
 
 /* Forward declaration. */
 int push_event(PP_Resource event);
@@ -42,12 +42,23 @@ int push_event(PP_Resource event);
 /* graphics_2d_subinit is defined in gfx-pepper-2d.c. */
 int graphics_2d_subinit(uint32_t *Rmask, uint32_t *Gmask, uint32_t *Bmask,
                         uint32_t *Amask);
+void screen_size_changed_2d(int32_t width, int32_t height);
 
 /* graphics_3d_subinit is defined in gfx-pepper-3d.c. */
 int graphics_3d_subinit(uint32_t *Rmask, uint32_t *Gmask, uint32_t *Bmask,
                         uint32_t *Amask);
+void screen_size_changed_3d(int32_t width, int32_t height);
 
+static int using_3d;
 static uint32_t Rmask, Gmask, Bmask, Amask;
+
+void screen_size_changed(unsigned int width, unsigned int height) {
+    if (using_3d) {
+        screen_size_changed_3d(width, height);
+    } else {
+        screen_size_changed_2d(width, height);
+    }
+}
 
 STATIC_INLINE int pepper_lockscr(struct vidbuf_description *gfxinfo) {
     return 1;
@@ -117,7 +128,7 @@ static int init_colors (void)
 
 /* A key thing here is to populate the struct gfxvidinfo; most of it is done
  * in the subinit functions.
- * 
+ *
  * We try hardware accelerated graphics via Graphics3D, If Chrome doesn't
  * support it on the given adapter/driver/OS combination, we fall back to
  * Graphics2D, which is generally speaking slower.
@@ -126,7 +137,7 @@ int graphics_init(void) {
     /* Set up the common parts of the gfxvidinfo struct here. The subinit
      * functions for 2D and 3D initialize the remaining values appropriately.
      */
-    /* TODO(cstefansen): Generalize this. For now we force 720x568. */    
+    /* TODO(cstefansen): Generalize resolution. For now we force 720x568. */
     gfxvidinfo.width = currprefs.gfx_size_fs.width = 720;
     gfxvidinfo.height = currprefs.gfx_size_fs.height = 568;
     gfxvidinfo.emergmem = 0;
@@ -139,27 +150,20 @@ int graphics_init(void) {
     gfxvidinfo.flush_clear_screen = pepper_flush_clear_screen;
 
     /* Try 3D graphics. */
-    int using_3d = 1;
+    using_3d = 1;
     if (!graphics_3d_subinit(&Rmask, &Gmask, &Bmask, &Amask)) {
-        DEBUG_LOG("Could not initialize hardware accelerated graphics (Graphics3D).\n");
+        DEBUG_LOG("Could not initialize hardware accelerated graphics "
+                  "(Graphics3D).\n");
         using_3d = 0;
         /* Try 2D graphics. */
         if (!graphics_2d_subinit(&Rmask, &Gmask, &Bmask, &Amask)) {
             DEBUG_LOG("Could not initialize 2D graphics (Graphics2D).\n");
-            return 0;            
+            return 0;
         }
     }
-    
+
     reset_drawing();
     init_colors();
-
-    /* Set alpha channel. */
-    // cstef necessary?
-//    unsigned char* p;
-//    unsigned char* end = gfxvidinfo.bufmem + gfxvidinfo.rowbytes * gfxvidinfo.height;
-//    for (p = gfxvidinfo.bufmem + 3;
-//            p < end; p +=4)
-//        *p = 0xFF;
 
     DEBUG_LOG("Screen height    : %d\n", gfxvidinfo.height);
     DEBUG_LOG("Screen width     : %d\n", gfxvidinfo.width);
@@ -173,7 +177,8 @@ int graphics_init(void) {
 
 void setmaintitle(void) {}
 
-int gfx_parse_option(struct uae_prefs *p, const char *option, const char *value) {
+int gfx_parse_option(struct uae_prefs *p, const char *option,
+                     const char *value) {
     return 0;
 }
 
@@ -198,7 +203,7 @@ static PPB_KeyboardInputEvent *ppb_keyboard_event_interface;
 static PPB_MouseInputEvent *ppb_mouse_event_interface;
 
 /*
- * Mouse inputdevice functions.
+ * Mouse input device functions.
  */
 
 #define MAX_BUTTONS 3
@@ -209,9 +214,12 @@ static PPB_MouseInputEvent *ppb_mouse_event_interface;
 static int init_mouse (void)
 {
     if (!ppb_input_event_interface) {
-        ppb_input_event_interface = (PPB_InputEvent *) NaCl_GetInterface(PPB_INPUT_EVENT_INTERFACE);
+        ppb_input_event_interface =
+            (PPB_InputEvent *) NaCl_GetInterface(PPB_INPUT_EVENT_INTERFACE);
     }
-    ppb_mouse_event_interface = (PPB_MouseInputEvent *) NaCl_GetInterface(PPB_MOUSE_INPUT_EVENT_INTERFACE);
+    ppb_mouse_event_interface =
+            (PPB_MouseInputEvent *) NaCl_GetInterface(
+                    PPB_MOUSE_INPUT_EVENT_INTERFACE);
 
     if (!ppb_input_event_interface) {
         DEBUG_LOG("Could not acquire PPB_InputEvent interface.\n");
@@ -262,7 +270,8 @@ static int get_mouse_widget_num (int mouse)
     return MAX_AXES + MAX_BUTTONS;
 }
 
-static int get_mouse_widget_type (int mouse, int num, TCHAR *name, uae_u32 *code)
+static int get_mouse_widget_type (int mouse, int num, TCHAR *name,
+                                  uae_u32 *code)
 {
     if (num >= MAX_AXES && num < MAX_AXES + MAX_BUTTONS) {
         if (name)
@@ -316,9 +325,12 @@ struct inputdevice_functions inputdevicefunc_mouse = {
 static int init_kb(void)
 {
     if (!ppb_input_event_interface) {
-        ppb_input_event_interface = (PPB_InputEvent *) NaCl_GetInterface(PPB_INPUT_EVENT_INTERFACE);
+        ppb_input_event_interface =
+                (PPB_InputEvent *) NaCl_GetInterface(PPB_INPUT_EVENT_INTERFACE);
     }
-    ppb_keyboard_event_interface = (PPB_KeyboardInputEvent *) NaCl_GetInterface(PPB_KEYBOARD_INPUT_EVENT_INTERFACE);
+    ppb_keyboard_event_interface =
+            (PPB_KeyboardInputEvent *) NaCl_GetInterface(
+                    PPB_KEYBOARD_INPUT_EVENT_INTERFACE);
 
     if (!ppb_input_event_interface) {
         DEBUG_LOG("Could not acquire PPB_InputEvent interface.\n");
@@ -328,7 +340,7 @@ static int init_kb(void)
         DEBUG_LOG("Could not acquire PPB_KeyboardInputEvent interface.\n");
         return 0;
     }
-    
+
     inputdevice_release_all_keys ();
     reset_hotkeys ();
 
@@ -541,7 +553,8 @@ static int ppapi_keycode_to_dik(uint32_t key) {
     }
 }
 
-int input_get_default_mouse (struct uae_input_device *uid, int num, int port, int af) {
+int input_get_default_mouse (struct uae_input_device *uid, int num, int port,
+                             int af) {
     /* Supports only one mouse */
     uid[0].eventid[ID_AXIS_OFFSET + 0][0]   = INPUTEVENT_MOUSE1_HORIZ;
     uid[0].eventid[ID_AXIS_OFFSET + 1][0]   = INPUTEVENT_MOUSE1_VERT;
@@ -560,18 +573,19 @@ void screenshot (int mode, int doprepare) {}
 /* Returns 0 if the queue is full, the event cannot be parsed, or the event
  * was not handled. */
 int push_event(PP_Resource event) {
-    PP_InputEvent_Type type = ppb_input_event_interface->GetType(event); 
+    PP_InputEvent_Type type = ppb_input_event_interface->GetType(event);
     switch (type) {
     case PP_INPUTEVENT_TYPE_MOUSEDOWN:
     case PP_INPUTEVENT_TYPE_MOUSEUP: {
         int buttonno = -1;
         switch (ppb_mouse_event_interface->GetButton(event)) {
         case PP_INPUTEVENT_MOUSEBUTTON_NONE:   return 0;
-        case PP_INPUTEVENT_MOUSEBUTTON_LEFT:   buttonno = 0; break;  
+        case PP_INPUTEVENT_MOUSEBUTTON_LEFT:   buttonno = 0; break;
         case PP_INPUTEVENT_MOUSEBUTTON_MIDDLE: buttonno = 2; break;
         case PP_INPUTEVENT_MOUSEBUTTON_RIGHT:  buttonno = 1; break;
         }
-        setmousebuttonstate(0, buttonno, type == PP_INPUTEVENT_TYPE_MOUSEDOWN ? 1 : 0);
+        setmousebuttonstate(0, buttonno, type == PP_INPUTEVENT_TYPE_MOUSEDOWN ?
+                            1 : 0);
         break;
     }
     case PP_INPUTEVENT_TYPE_MOUSEMOVE: {
@@ -597,12 +611,14 @@ void handle_events(void) {}
 
 #ifdef PICASSO96
 int picasso_palette (void) { return 0; }
-void gfx_set_picasso_modeinfo (uae_u32 w, uae_u32 h, uae_u32 depth, RGBFTYPE rgbfmt) {}
+void gfx_set_picasso_modeinfo (uae_u32 w, uae_u32 h, uae_u32 depth,
+                               RGBFTYPE rgbfmt) {}
 void gfx_set_picasso_colors (RGBFTYPE rgbfmt) {}
 void gfx_set_picasso_state (int on) {}
 int WIN32GFX_IsPicassoScreen (void) { return 0; }
 void DX_Invalidate (int first, int last) {}
-int DX_Fill (int dstx, int dsty, int width, int height, uae_u32 color, RGBFTYPE rgbtype) { return 0; }
+int DX_Fill (int dstx, int dsty, int width, int height, uae_u32 color,
+             RGBFTYPE rgbtype) { return 0; }
 int DX_FillResolutions (uae_u16 *ppixel_format) { return 0; }
 void gfx_unlock_picasso (void) {}
 uae_u8 *gfx_lock_picasso (int fullupdate) {

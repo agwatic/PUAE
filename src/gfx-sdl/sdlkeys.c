@@ -395,7 +395,6 @@ int keysym2amiga (int keysym)
  *
  * We need a better way of doing this. ;-)
  */
-// TODO(cstefansen): do the same for Pepper fullscreen toggle, so we don't steal an actual key combo.
 static struct uae_hotkeyseq sdl_hotkeys[] =
 {
     { MAKE_HOTKEYSEQ (SDLK_F12, SDLK_q, -1, -1,           INPUTEVENT_SPC_QUIT) },

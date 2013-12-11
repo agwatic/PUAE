@@ -7,7 +7,7 @@
  * Copyright 2003-2007 Richard Drummond
  * Copyright 2006 Jochen Becher
  *
- * Partially based on the UAE X interface (xwin.c)
+ * Partialy based on the UAE X interface (xwin.c)
  *
  * Copyright 1995, 1996 Bernd Schmidt
  * Copyright 1996 Ed Hanway, Andre Beck, Samuel Devulder, Bruno Coste
@@ -21,13 +21,10 @@
 #include "sysdeps.h"
 #include "../keymap/keymap.h"
 
-#define cstef_ll() printf("---- %s: %s(%d)\n", __FILE__, __FUNCTION__, __LINE__); fflush(stdout); // TODO cstefansen
-
 #include <SDL.h>
 #include <SDL_endian.h>
 unsigned int shading_enabled = 0;
 #ifdef USE_GL
-#ifndef __native_client__
 #define NO_SDL_GLEXT
 # include <SDL_opengl.h>
 /* These are not defined in the current version of SDL_opengl.h. */
@@ -37,14 +34,6 @@ unsigned int shading_enabled = 0;
 # ifndef GL_STORAGE_SHARED_APPLE
 #  define GL_STORAGE_SHARED_APPLE 0x85BF
 # endif
-#else /* __native_client__ */
-#include "ppapi.h"
-#include "GLES2/gl2.h"
-#include "GLES2/gl2ext.h"
-#include "GLES2/gl2platform.h"
-#include "ppapi/c/ppb_opengles2.h"
-#include "ppapi/gles2/gl2ext_ppapi.h"
-#endif /* __native_client__ */
 
 #ifdef GL_SHADER
 #ifdef __WIN32__
@@ -64,7 +53,7 @@ unsigned int shading_enabled = 0;
   void setupExtensions()
   { shading_enabled = 0; }; // just fail otherwise?
 #endif
-#endif /* GL_SHADER */
+#endif
 #endif /* USE_GL */
 
 #include "options.h"
@@ -80,7 +69,14 @@ unsigned int shading_enabled = 0;
 #include "inputdevice.h"
 #include "hotkeys.h"
 #include "sdlgfx.h"
-#include "writelog.h"
+
+/* Uncomment for debugging output */
+//#define DEBUG
+#ifdef DEBUG
+#define DEBUG_LOG write_log
+#else
+#define DEBUG_LOG(...) do ; while(0)
+#endif
 
 static SDL_Surface *display;
 static SDL_Surface *screen;
@@ -140,7 +136,7 @@ unsigned int mouse_capture;
 
 TCHAR config_filename[256] = "";
 
-#if defined WIN32_OR_X11 && defined GL_SHADER
+#ifdef WIN32_OR_X11 && GL_SHADER
 PFNGLCREATEPROGRAMOBJECTARBPROC     glCreateProgramObjectARB = NULL;
 PFNGLDELETEOBJECTARBPROC            glDeleteObjectARB = NULL;
 PFNGLCREATESHADEROBJECTARBPROC      glCreateShaderObjectARB = NULL;
@@ -545,7 +541,6 @@ static int round_up_to_power_of_2 (int value)
 
 static void check_gl_extensions (void)
 {
-#ifndef __native_client__
     static int done = 0;
 
     if (!done) {
@@ -555,13 +550,12 @@ static void check_gl_extensions (void)
 		have_apple_client_storage = strstr (extensions, "APPLE_client_storage")  ? 1 : 0;
 		have_apple_texture_range  = strstr (extensions, "APPLE_texture_range")   ? 1 : 0;
     }
-#endif /* __native_client__ */
 }
 
 static void init_gl_display (GLsizei width, GLsizei height)
 {
-#ifndef __native_client__
     glViewport (0, 0, width, height);
+
     glColor3f (1.0f, 1.0f, 1.0f);
     glClearColor (0.0, 0.0, 0.0, 0.0);
     glShadeModel (GL_FLAT);
@@ -572,13 +566,14 @@ static void init_gl_display (GLsizei width, GLsizei height)
     if (have_texture_rectangles)
 		glEnable (GL_TEXTURE_RECTANGLE_ARB);
     else
-        glEnable (GL_TEXTURE_2D);
+		glEnable (GL_TEXTURE_2D);
+
     glMatrixMode (GL_PROJECTION);
     glLoadIdentity ();
     glOrtho (0, width, height, 0, -1.0, 1.0);
     glMatrixMode (GL_MODELVIEW);
     glLoadIdentity ();
-#endif /* __native_client__ */
+
     return;
 }
 
@@ -596,60 +591,44 @@ static int alloc_gl_buffer (struct gl_buffer_t *buffer, int width, int height, i
     GLenum tex_intformat;
 
     buffer->width          = width;
-#ifndef __native_client__
     if (have_texture_rectangles) {
-                buffer->texture_width  = width;
-                buffer->texture_height = height;
-                buffer->target         = GL_TEXTURE_RECTANGLE_ARB;
-    } else
-#endif /* __native_client__ */
-    {
-                buffer->texture_width  = round_up_to_power_of_2 (width);
-                buffer->texture_height = round_up_to_power_of_2 (height);
-                buffer->target         = GL_TEXTURE_2D;
+		buffer->texture_width  = width;
+		buffer->texture_height = height;
+		buffer->target         = GL_TEXTURE_RECTANGLE_ARB;
+    } else {
+		buffer->texture_width  = round_up_to_power_of_2 (width);
+		buffer->texture_height = round_up_to_power_of_2 (height);
+		buffer->target         = GL_TEXTURE_2D;
     }
 
     /* TODO: Should allocate buffer after we've successfully created the texture */
     if (want_16bit) {
-        cstef_ll();
 #if defined (__APPLE__)
 		display = SDL_CreateRGBSurface (SDL_SWSURFACE, buffer->texture_width, buffer->texture_height, 16, 0x00007c00, 0x000003e0, 0x0000001f, 0x00000000);
 #else
 		display = SDL_CreateRGBSurface (SDL_SWSURFACE, buffer->texture_width, buffer->texture_height, 16, 0x0000f800, 0x000007e0, 0x0000001f, 0x00000000);
 #endif
-	    cstef_ll();
     } else {
-        cstef_ll();
 		display = SDL_CreateRGBSurface (SDL_SWSURFACE, buffer->texture_width, buffer->texture_height, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0x00000000);
-	    cstef_ll();
     }
-    cstef_ll();
+
     if (!display)
 		return 0;
 
-    //cstef^^^*** buffer->pixels = display->pixels;
+    buffer->pixels = display->pixels;
     buffer->pitch  = display->pitch;
-    cstef_ll();
-    //glGenTextures   (1, &buffer->texture);
-    cstef_ll();
-    //glBindTexture   (buffer->target, buffer->texture);
-#if defined (__APPLE__)
+
+    glGenTextures   (1, &buffer->texture);
+    glBindTexture   (buffer->target, buffer->texture);
     if (have_apple_client_storage)
 		glPixelStorei (GL_UNPACK_CLIENT_STORAGE_APPLE, GL_TRUE);
     if (have_apple_texture_range)
-                glTexParameteri (buffer->target, GL_TEXTURE_STORAGE_HINT_APPLE, GL_STORAGE_SHARED_APPLE);
-#endif
-#ifndef __native_client__
+		glTexParameteri (buffer->target, GL_TEXTURE_STORAGE_HINT_APPLE, GL_STORAGE_SHARED_APPLE);
+
     glTexParameteri (buffer->target, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameteri (buffer->target, GL_TEXTURE_WRAP_T, GL_CLAMP);
-#endif
 
     /* TODO: Better method of deciding on the best texture format to use is needed. */
-#ifdef __native_client__
-    tex_intformat     = GL_RGB;
-    buffer->format    = GL_RGB;
-    buffer->type      = GL_UNSIGNED_SHORT_5_6_5;
-#else
     if (want_16bit) {
 #if defined (__APPLE__)
 		tex_intformat     = GL_RGB5;
@@ -665,11 +644,8 @@ static int alloc_gl_buffer (struct gl_buffer_t *buffer, int width, int height, i
 		buffer->format    = GL_BGRA;
 		buffer->type      = GL_UNSIGNED_INT_8_8_8_8_REV;
     }
-#endif /* __native_client__ */
 
-    cstef_ll();
-    //glTexImage2D (buffer->target, 0, tex_intformat, buffer->texture_width, buffer->texture_height, 0, buffer->format, buffer->type, buffer->pixels);
-    cstef_ll();
+    glTexImage2D (buffer->target, 0, tex_intformat, buffer->texture_width, buffer->texture_height, 0, buffer->format, buffer->type, buffer->pixels);
 
     if (glGetError () != GL_NO_ERROR) {
 		write_log ("SDLGFX: Failed to allocate texture.\n");
@@ -680,34 +656,12 @@ static int alloc_gl_buffer (struct gl_buffer_t *buffer, int width, int height, i
 		return 1;
 }
 
-static int NaCl_alloc_gl_buffer () {
-    return alloc_gl_buffer(&glbuffer, current_width, current_height, 1); // cstef
-}
 
 
 STATIC_INLINE void flush_gl_buffer (const struct gl_buffer_t *buffer, int first_line, int last_line)
 {
-    //glTexSubImage2D (buffer->target, 0, 0, first_line, buffer->texture_width, last_line - first_line + 1, buffer->format, buffer->type, buffer->pixels + buffer->pitch * first_line);
+    glTexSubImage2D (buffer->target, 0, 0, first_line, buffer->texture_width, last_line - first_line + 1, buffer->format, buffer->type, buffer->pixels + buffer->pitch * first_line);
 }
-
-// Uniform index.
-enum {
-    UNIFORM_VIDEOFRAME,
-    UNIFORM_INPUTCOLOR,
-    UNIFORM_THRESHOLD,
-    NUM_UNIFORMS
-};
-GLint uniforms[NUM_UNIFORMS];
-
-// Attribute index.
-enum {
-    ATTRIB_VERTEX,
-    ATTRIB_TEXTUREPOSITON,
-    NUM_ATTRIBUTES
-};
-
-static GLuint g_programObj;
-static GLuint g_textureID;
 
 STATIC_INLINE void render_gl_buffer (const struct gl_buffer_t *buffer, int first_line, int last_line)
 {
@@ -758,81 +712,12 @@ STATIC_INLINE void render_gl_buffer (const struct gl_buffer_t *buffer, int first
 		ty1 = (float) last_line     / (float) buffer->texture_height;
     }
 
-#ifdef __native_client__
-    glGenTextures(1, &g_textureID);
-    glBindTexture(GL_TEXTURE_2D, g_textureID);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    printf("pixels org: %p", buffer->pixels); fflush(stdout);
-    glTexImage2D (buffer->target, 0, GL_RGB, buffer->texture_width, buffer->texture_height, 0, buffer->format, buffer->type, buffer->pixels);
-//    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
-//                 g_TextureData);
-    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, buffer->texture_width, bufferHeight, 0, GL_BGRA, GL_UNSIGNED_BYTE, CVPixelBufferGetBaseAddress(cameraFrame));
-
-    static const GLfloat squareVertices[] = {
-            -1.0f, -1.0,
-            1.0f, -1.0,
-            -1.0f, 1.0,
-            1.0f, 1.0,
-    };
-
-    static const GLfloat textureVertices[] = {
-            0.0f, 568.0f/1024.0f,
-            720.0f/1024.0f, 568.0f/1024.0f,
-            0.0f, 0.0f,
-            720.0f/1024.0f, 0.0f,
-    };
-
-//    static const GLfloat squareVertices[] = {
-//            -1.0f, -1.0 - (2.0f * (1024.0f-568.0f)/1024.0f),
-//            1.0f, -1.0 - (2.0f * (1024.0f-568.0f)/1024.0f),
-//            -1.0f, 1.0 - (2.0f * (1024.0f-568.0f)/1024.0f),
-//            1.0f, 1.0 - (2.0f * (1024.0f-568.0f)/1024.0f),
-//    };
-//
-//    static const GLfloat textureVertices[] = {
-//            0.0f, 1.0f,
-//            1.0f, 1.0f,
-//            0.0f, 0.0f,
-//            1.0f, 0.0f,
-//    };
-
-    glUseProgram(g_programObj);
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, g_textureID);
-
-    glUniform1i(uniforms[UNIFORM_VIDEOFRAME], 0);
-
-    glVertexAttribPointer(ATTRIB_VERTEX, 2, GL_FLOAT, 0, 0, squareVertices);
-    glEnableVertexAttribArray(ATTRIB_VERTEX);
-    glVertexAttribPointer(ATTRIB_TEXTUREPOSITON, 2, GL_FLOAT, 0, 0, textureVertices);
-    glEnableVertexAttribArray(ATTRIB_TEXTUREPOSITON);
-
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-    glDeleteTextures(1, &g_textureID);
-
-#else
     glBegin (GL_QUADS);
 	glTexCoord2f (tx0, ty0); glVertex2f (0.0f,                  (float) first_line);
 	glTexCoord2f (tx1, ty0); glVertex2f ((float) buffer->width, (float) first_line);
 	glTexCoord2f (tx1, ty1); glVertex2f ((float) buffer->width, (float) last_line);
 	glTexCoord2f (tx0, ty1); glVertex2f (0.0f,                  (float) last_line);
     glEnd ();
-#endif
-}
-
-
-GLuint compileShader(GLenum type, const char *data) {
-  const char *shaderStrings[1];
-  shaderStrings[0] = data;
-
-  GLuint shader = glCreateShader(type);
-  glShaderSource(shader, 1, shaderStrings, NULL );
-  glCompileShader(shader);
-  return shader;
 }
 
 #endif /* USE_GL */
@@ -841,7 +726,7 @@ GLuint compileShader(GLenum type, const char *data) {
  ** Buffer methods not implemented for this driver.
  **/
 
- static void sdl_flush_line (struct vidbuf_description *gfxinfo, int line_no)
+static void sdl_flush_line (struct vidbuf_description *gfxinfo, int line_no)
 {
 }
 
@@ -861,7 +746,7 @@ static void sdl_unlock_nolock (struct vidbuf_description *gfxinfo)
 
 STATIC_INLINE void sdl_flush_block_nolock (struct vidbuf_description *gfxinfo, int first_line, int last_line)
 {
-   // TODO cstefansen SDL_UpdateRect (display, 0, first_line, current_width, last_line - first_line + 1);
+   SDL_UpdateRect (display, 0, first_line, current_width, last_line - first_line + 1);
 }
 
 
@@ -908,10 +793,8 @@ static void sdl_flush_block (struct vidbuf_description *gfxinfo, int first_line,
     SDL_LockSurface (display);
 }
 
-STATIC_INLINE void sdl_flush_screen_dummy (struct vidbuf_description *gfxinfo, int first_line, int last_line)
+static void sdl_flush_screen_dummy (struct vidbuf_description *gfxinfo, int first_line, int last_line)
 {
-	// TODO cstefansen
-	SDL_UpdateRect (display, 0, 0, 0, 0);
 }
 
 #include "hrtimer.h"
@@ -933,7 +816,7 @@ static void sdl_flush_screen_flip (struct vidbuf_description *gfxinfo, int first
 
 static void sdl_flush_clear_screen (struct vidbuf_description *gfxinfo)
 {
-    DEBUG_LOG ("Function: sdl_flush_clear_screen\n");
+    DEBUG_LOG ("Function: flush_clear_screen\n");
 
     if (display) {
 		SDL_Rect rect = { 0, 0, display->w, display->h };
@@ -959,36 +842,21 @@ static void sdl_gl_unlock (struct vidbuf_description *gfxinfo)
 
 static void sdl_gl_flush_block (struct vidbuf_description *gfxinfo, int first_line, int last_line)
 {
-    //cstefDEBUG_LOG ("Function: sdl_gl_flush_block %d %d\n", first_line, last_line);
+    DEBUG_LOG ("Function: sdl_gl_flush_block %d %d\n", first_line, last_line);
 
-    //TODO(cstefansen): flush_gl_buffer (&glbuffer, first_line, last_line);
+    flush_gl_buffer (&glbuffer, first_line, last_line);
 }
 
-//static bool first_swap_ = true;
 /* Single-buffered flush-screen method */
 static void sdl_gl_flush_screen (struct vidbuf_description *gfxinfo, int first_line, int last_line)
 {
-    //DEBUG_LOG ("Function: sdl_gl_flush_screen %d %d\n", first_line, last_line);
-    //TODO(cstefansen):
-#ifdef __native_client__
-//    if (first_swap_) {
-//        first_swap_ = false;
-        SDL_GL_SwapBuffers();
-//    }
-#else
-    flush_gl_buffer (&glbuffer, first_line, last_line);
-
     render_gl_buffer (&glbuffer, first_line, last_line);
     glFlush ();
-#endif
 }
 
 /* Double-buffered flush-screen method */
 static void sdl_gl_flush_screen_dbl (struct vidbuf_description *gfxinfo, int first_line, int last_line)
 {
-    //TODO(cstefansen):
-    flush_gl_buffer (&glbuffer, first_line, last_line);
-
     render_gl_buffer (&glbuffer, 0, display->h - 1);
     SDL_GL_SwapBuffers ();
 }
@@ -996,9 +864,6 @@ static void sdl_gl_flush_screen_dbl (struct vidbuf_description *gfxinfo, int fir
 /* Double-buffered, vsynced flush-screen method */
 static void sdl_gl_flush_screen_vsync (struct vidbuf_description *gfxinfo, int first_line, int last_line)
 {
-    //TODO(cstefansen):
-    flush_gl_buffer (&glbuffer, first_line, last_line);
-
     frame_time_t start_time;
     frame_time_t sleep_time;
 
@@ -1029,25 +894,28 @@ static void sdl_gl_flush_clear_screen (struct vidbuf_description *gfxinfo)
 int graphics_setup (void)
 {
     int result = 0;
+
     if (SDL_InitSubSystem (SDL_INIT_VIDEO) == 0) {
-                const SDL_version   *version = SDL_Linked_Version ();
-                const SDL_VideoInfo *info    = SDL_GetVideoInfo ();
 
-                write_log ("SDLGFX: Initialized.\n");
-                write_log ("SDLGFX: Using SDL version %d.%d.%d.\n", version->major, version->minor, version->patch);
+		const SDL_version   *version = SDL_Linked_Version ();
+		const SDL_VideoInfo *info    = SDL_GetVideoInfo ();
 
-                /* Find default display depth */
-                bitdepth = info->vfmt->BitsPerPixel;
-                bit_unit = info->vfmt->BytesPerPixel * 8;
+		write_log ("SDLGFX: Initialized.\n");
+		write_log ("SDLGFX: Using SDL version %d.%d.%d.\n", version->major, version->minor, version->patch);
 
-                write_log ("SDLGFX: Display is %d bits deep.\n", bitdepth);
+		/* Find default display depth */
+		bitdepth = info->vfmt->BitsPerPixel;
+		bit_unit = info->vfmt->BytesPerPixel * 8;
 
-                /* Build list of screenmodes */
-                mode_count = find_screen_modes (info->vfmt, &screenmode[0], MAX_SDL_SCREENMODE);
+		write_log ("SDLGFX: Display is %d bits deep.\n", bitdepth);
 
-                result = 1;
+		/* Build list of screenmodes */
+		mode_count = find_screen_modes (info->vfmt, &screenmode[0], MAX_SDL_SCREENMODE);
+
+		result = 1;
     } else
-                write_log ("SDLGFX: initialization failed - %s\n", SDL_GetError());
+		write_log ("SDLGFX: initialization failed - %s\n", SDL_GetError());
+
     return result;
 }
 
@@ -1085,7 +953,7 @@ static int graphics_subinit_gl (void)
 #endif
 
     if (bitdepth <= 16 || (!screen_is_picasso && !(currprefs.chipset_mask & CSMASK_AGA))) {
-		DEBUG_LOG ("Want 16-bit frame buffer.\n");
+		DEBUG_LOG ("Want 16-bit framebuffer.\n");
 		SDL_GL_SetAttribute (SDL_GL_RED_SIZE,   5);
 		SDL_GL_SetAttribute (SDL_GL_GREEN_SIZE, 5);
 		SDL_GL_SetAttribute (SDL_GL_BLUE_SIZE,  5);
@@ -1138,7 +1006,6 @@ static int graphics_subinit_gl (void)
 	gfxvidinfo.flush_block = sdl_gl_flush_block;
 	gfxvidinfo.flush_clear_screen = sdl_gl_flush_clear_screen;
 
-    cstef_ll();
 	if (dblbuff) {
 	    if (vsync) {
 			write_log ("SDLGFX: Using double-buffered, vsynced output.\n");
@@ -1152,21 +1019,11 @@ static int graphics_subinit_gl (void)
 	    gfxvidinfo.flush_screen = sdl_gl_flush_screen;
 	}
 
-	cstef_ll();
 	check_gl_extensions ();
-    cstef_ll();
+
 	init_gl_display (current_width, current_height);
-	cstef_ll();
-#ifdef __native_client__
-	glbuffer.texture = 0;
-#endif
-    if (!alloc_gl_buffer (&glbuffer, current_width, current_height, want_16bit))
-        return 0;
-#ifdef __native_client__
-    display->pixels = screen->pixels;
-    glbuffer.pixels = screen->pixels; // cstef
-#endif
-	cstef_ll();
+	if (!alloc_gl_buffer (&glbuffer, current_width, current_height, want_16bit))
+	    return 0;
 
 #ifdef PICASSO96
 	if (!screen_is_picasso) {
@@ -1221,19 +1078,9 @@ static int graphics_subinit (void)
 		    uiSDLVidModFlags |= SDL_DOUBLEBUF;
     }
 
-    // TODO(cstefansen): remove to run desktop Mac?
-#ifdef __native_client__
-    uiSDLVidModFlags |= SDL_DOUBLEBUF; // Inserted cstefansen TODO
-#endif /* __native_client__ */
-
     DEBUG_LOG ("Resolution: %d x %d x %d\n", current_width, current_height, bitdepth);
 
     screen = SDL_SetVideoMode (current_width, current_height, bitdepth, uiSDLVidModFlags);
-
-    // TODO(cstefansen): remove to run desktop Mac?
-#ifdef __native_client__
-    screen->flags |= SDL_DOUBLEBUF; // Inserted cstefansen TODO
-#endif /* __native_client__ */
 
     if (screen == NULL) {
 		gui_message ("Unable to set video mode: %s\n", SDL_GetError ());
@@ -1251,13 +1098,12 @@ static int graphics_subinit (void)
 #ifdef PICASSO96
 	DEBUG_LOG ("P96 screen?    : %d\n", screen_is_picasso);
 #endif
-        DEBUG_LOG ("Fullscreen?    : %d\n", fullscreen);
-        DEBUG_LOG ("Mouse grabbed? : %d\n", mousegrab);
-        DEBUG_LOG ("HW surface?    : %d\n", is_hwsurface);
-        DEBUG_LOG ("Vsync?         : %d\n", vsync);
-        DEBUG_LOG ("Must lock?     : %d\n", SDL_MUSTLOCK (screen));
-        DEBUG_LOG ("Bytes per Pixel: %d\n", screen->format->BytesPerPixel);
-        DEBUG_LOG ("Bytes per Line : %d\n", screen->pitch);
+	DEBUG_LOG ("Fullscreen?    : %d\n", fullscreen);
+	DEBUG_LOG ("Mouse grabbed? : %d\n", mousegrab);
+	DEBUG_LOG ("HW surface?    : %d\n", is_hwsurface);
+	DEBUG_LOG ("Must lock?     : %d\n", SDL_MUSTLOCK (screen));
+	DEBUG_LOG ("Bytes per Pixel: %d\n", screen->format->BytesPerPixel);
+	DEBUG_LOG ("Bytes per Line : %d\n", screen->pitch);
 
 	/* Set up buffer methods */
 	if (SDL_MUSTLOCK (screen)) {
@@ -1271,16 +1117,14 @@ static int graphics_subinit (void)
 	}
 	gfxvidinfo.flush_clear_screen = sdl_flush_clear_screen;
 
-#ifdef __native_client__
-        vsync = 1; // TODO(cstefansen): Forcing DOUBLEBUF
-#endif /* __native_client__ */
-        if (vsync) {
-        	display = SDL_CreateRGBSurface(SDL_HWSURFACE, screen->w, screen->h, screen->format->BitsPerPixel, screen->format->Rmask, screen->format->Gmask, screen->format->Bmask, 0);
-            gfxvidinfo.flush_screen = sdl_flush_screen_flip;
-        } else {
-            display = screen;
-            gfxvidinfo.flush_screen = sdl_flush_screen_dummy;
-        }
+
+	if (vsync) {
+	    display = SDL_CreateRGBSurface(SDL_HWSURFACE, screen->w, screen->h, screen->format->BitsPerPixel, screen->format->Rmask, screen->format->Gmask, screen->format->Bmask, 0);
+	    gfxvidinfo.flush_screen = sdl_flush_screen_flip;
+	} else {
+	    display = screen;
+	    gfxvidinfo.flush_screen = sdl_flush_screen_dummy;
+	}
 
 #ifdef PICASSO96
 	if (!screen_is_picasso) {
@@ -1301,6 +1145,7 @@ static int graphics_subinit (void)
 	    gfxvidinfo.linemem		= 0;
 	    gfxvidinfo.pixbytes		= display->format->BytesPerPixel;
 	    gfxvidinfo.rowbytes		= display->pitch;
+
 
 	    SDL_SetColors (display, arSDLColors, 0, 256);
 
@@ -1524,12 +1369,10 @@ void handle_events (void)
 			DEBUG_LOG ("Event: mouse motion\n");
 
 			if (!fullscreen && !mousegrab) {
-			    DEBUG_LOG("Abs mouse event %d, %d", rEvent.motion.x, rEvent.motion.y);
 			    setmousestate (0, 0,rEvent.motion.x, 1);
 			    setmousestate (0, 1,rEvent.motion.y, 1);
 			} else {
-                DEBUG_LOG("Rel mouse event %d, %d", rEvent.motion.xrel, rEvent.motion.yrel);
-                setmousestate (0, 0, rEvent.motion.xrel, 0);
+			    setmousestate (0, 0, rEvent.motion.xrel, 0);
 			    setmousestate (0, 1, rEvent.motion.yrel, 0);
 			}
 			break;

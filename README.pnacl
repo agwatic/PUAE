@@ -1,0 +1,39 @@
+Git
+---
+https://github.com/cstefansen/PUAE
+
+
+Providence
+----------
+This code base was forked from PUAE, the Portable Universal Amiga Emulator,
+from GnoStiC's GitHub repo
+
+    https://github.com/GnoStiC/PUAE
+
+at commit f2fc773b75ec333f4186c0336f5a97d14a9546ba.
+
+
+Modifications
+-------------
+The code was then ported to Portable Native Client, with every effort not to
+break existing platform support.
+
+See docs/compiling.txt and build_native_client.sh for details on building for
+PNaCl.
+
+
+Further Details
+---------------
+See the README file, which has been left unmodified except for the reference
+to this file.
+
+
+Bug Reports
+-----------
+See src/gui-html/uae_faq.html under "How do I report an issue?"
+
+
+Contact
+-------
+See src/gui-html/uae_faq.html under "How do I report an issue?"
+Or you can email me: c.stefansen+puae@gmail.com

@@ -16,8 +16,8 @@
 #include "maketbl.h"
 
 #ifdef __pnacl__
-#define INLINE // Redefine INLINE to mean nothing rather than 'inline'.
-#endif  // __pnacl__
+#define INLINE  /* Redefine INLINE to mean nothing rather than 'inline'. */
+#endif  /* __pnacl__ */
 
 #define NC 510
 #define NPT 20

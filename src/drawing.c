@@ -499,7 +499,7 @@ void get_custom_mouse_limits (int *pw, int *ph, int *pdx, int *pdy, int dbl)
 	delay1 = (firstword_bplcon1 & 0x0f) | ((firstword_bplcon1 & 0x0c00) >> 6);
 	delay2 = ((firstword_bplcon1 >> 4) & 0x0f) | (((firstword_bplcon1 >> 4) & 0x0c00) >> 6);
 	if (delay1 == delay2)
-		;//dx += delay1; // TODO: fix this
+		;//dx += delay1;
 
 	dx = xshift (dx, res_shift);
 
@@ -812,7 +812,7 @@ STATIC_INLINE uae_u8 render_sprites (int pos, int dualpf, uae_u8 apixel, int aga
 		pairs 01 and 23 cleared, and pairs 45 and 67 set, so OFFS will
 		have a value of 4.
 		2 * OFFS is the bit number in V of the sprite pair, and it also
-		happens to be the color offset for that pair. 
+		happens to be the color offset for that pair.
 		*/
 		int offs;
 		if (v1 == 0)
@@ -876,7 +876,7 @@ STATIC_INLINE uae_u32 shsprite (int dpix, uae_u32 spix_val, uae_u32 v, int spr)
 	sprcol = render_sprites (dpix, 0, spix_val, 0);
 	if (!sprcol)
 		return v;
-	/* good enough for now.. */ 
+	/* good enough for now.. */
 	scol = colors_for_drawing.color_regs_ecs[sprcol] & 0xccc;
 	scol |= scol >> 2;
 	return xcolors[scol];
@@ -2276,7 +2276,7 @@ static void init_drawing_frame (void)
 						int nr = m >> 1;
 						int nl = (m & 1) == 0 ? 0 : 1;
 
-            
+
 						if (nr < currprefs.gfx_autoresolution_minh)
 							nr = currprefs.gfx_autoresolution_minh;
 						if (nl < currprefs.gfx_autoresolution_minv)

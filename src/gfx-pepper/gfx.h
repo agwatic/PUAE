@@ -13,6 +13,10 @@
 
 struct uae_prefs; /* Defined in options.h. */
 
+/* Call this function to have the Pepper graphics subsystem update itself
+ * when the screen size changes. */
+void screen_size_changed(unsigned int width, unsigned int height);
+
 /* The following functions must be provided by any graphics system and hence
  * also by Pepper.
  */

@@ -330,3 +330,4 @@ struct uaekey_hostmap
 
 struct uae_input_device_kbr_default *uaekey_make_default_kbr (const struct uaekey_hostmap *hostkeys);
 
+void keyboard_settrans(void);

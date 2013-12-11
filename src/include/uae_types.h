@@ -125,4 +125,4 @@ typedef unsigned int      uae_uintptr;
 #endif
 
 
-#endif // UAE_TYPES_H_
+#endif  /* UAE_TYPES_H_ */

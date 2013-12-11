@@ -6,14 +6,13 @@
  * Copyright 2012, 2013 Christian Stefansen
  */
 
-#ifdef __native_client__
-
 #include "ppapi.h"
 
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
+#include <algorithm>
 #include <istream>
 #include <iterator>
 #include <sstream>
@@ -27,6 +26,7 @@
 #include "ppapi/cpp/completion_callback.h"
 #include "ppapi/cpp/core.h"
 #include "ppapi/cpp/fullscreen.h"
+#include "ppapi/cpp/host_resolver.h"
 #include "ppapi/cpp/input_event.h"
 #include "ppapi/cpp/instance.h"
 #include "ppapi/cpp/message_loop.h"
@@ -37,30 +37,34 @@
 #include "ppapi/gles2/gl2ext_ppapi.h"
 #include "ppapi/utility/completion_callback_factory.h"
 
+#ifdef ENABLE_BUILD_KEY
+#include "build.key.c"
+#endif
+
 #ifdef USE_SDL
 #include "SDL/SDL.h"
 #include "SDL/SDL_nacl.h"
 #endif /* USE_SDL */
 
+// The main function of the emulator thread.
 extern "C" void real_main(int argc, const char **argv);
 
-// We call this function to relay messages from the HTML UI to the messaging pipe
-// that the emulator reads.
+// We call this function to relay messages from the HTML UI to the messaging
+// pipe that the emulator reads.
 extern "C" int handle_message(const char* msg);
 
-// We call this function to queue up input events. The emulator handles these in
-// handle_events().
+// We call this function to queue up input events. The emulator handles these
+// in handle_events().
 extern "C" int push_event(PP_Resource event);
-
-using namespace std;
 
 class UAEInstance : public pp::Instance, public pp::MouseLock {
  private:
-  static UAEInstance* the_instance_; // Ensure we only create one instance.
-  pthread_t uae_main_thread_;      // This thread will run real_main().
-  bool first_changed_view_;           // Ensure we initialize an instance only once.
-  int width_; int height_;         // Dimension of the video screen.
-  bool mouse_locked_;              // Whether mouse is locked or not.
+  static UAEInstance* the_instance_;  // Ensure we only create one instance.
+  pthread_t uae_main_thread_;         // This thread will run real_main().
+  bool first_changed_view_;           // Ensure we initialize an instance only
+                                      // once.
+  int width_; int height_;            // Dimension of the video screen.
+  bool mouse_locked_;                 // Whether mouse is locked or not.
   pp::Fullscreen fullscreen_;
   pp::CompletionCallbackFactory<UAEInstance> cc_factory_;
 
@@ -72,17 +76,17 @@ class UAEInstance : public pp::Instance, public pp::MouseLock {
 
   // Launches the actual game, e.g., by calling real_main().
   static void* LaunchUAE(void* data) {
-      // Use "thiz" to get access to instance object.
-      UAEInstance* thiz = reinterpret_cast<UAEInstance*>(data);
-      pp::MessageLoop msg_loop = pp::MessageLoop(thiz);
+      // Get access to instance object.
+      UAEInstance* this_instance = reinterpret_cast<UAEInstance*>(data);
+      pp::MessageLoop msg_loop = pp::MessageLoop(this_instance);
       if (PP_OK != msg_loop.AttachToCurrentThread()) {
-          printf("Failed to attach a message loop to the UAE thread.\n"); fflush(stdout);
+          printf("Failed to attach a message loop to the UAE thread.\n");
       }
 
-      // Create a fake command line.
-      const char* argv[] = { "-r", "kick.rom", "-f", "default.uaerc" }; // TODO
       // Call the UAE 'real_main' defined in main.c
-      real_main(sizeof(argv) / sizeof(argv[0]), argv);
+      const char *argv[] = { "", "-f", "default.uaerc" };
+      int argc = 3;
+      real_main(argc, argv);
       return 0;
   }
 
@@ -96,7 +100,6 @@ class UAEInstance : public pp::Instance, public pp::MouseLock {
   }
 
  public:
-
   explicit UAEInstance(PP_Instance instance)
     : pp::Instance(instance),
       pp::MouseLock(this),
@@ -106,10 +109,7 @@ class UAEInstance : public pp::Instance, public pp::MouseLock {
       mouse_locked_(false),
       cc_factory_(this),
       fullscreen_(this) {
-    // UAE requires mouse and keyboard events; add more if necessary.
-    RequestInputEvents(PP_INPUTEVENT_CLASS_MOUSE|
-                       PP_INPUTEVENT_CLASS_KEYBOARD);
-    assert (the_instance_ == NULL);
+    assert(the_instance_ == NULL);
     the_instance_ = this;
   }
 
@@ -121,19 +121,23 @@ class UAEInstance : public pp::Instance, public pp::MouseLock {
   // This function is called with the HTML attributes of the embed tag,
   // which can be used in lieu of command line arguments.
   virtual bool Init(uint32_t argc, const char* argn[], const char* argv[]) {
-    printf("Received %d args from HTML:\n", argc);
+      // UAE requires mouse and keyboard events; add more if necessary.
+      RequestInputEvents(PP_INPUTEVENT_CLASS_MOUSE|
+                         PP_INPUTEVENT_CLASS_KEYBOARD);
+
+      printf("Received %d arguments from HTML:\n", argc);
     for (unsigned int i = 0; i < argc; i++) {
       printf("    [%d] %s=\"%s\"\n", i, argn[i], argv[i]);
     }
-    fflush(stdout);
-    // TODO: [Process arguments and set width_ and height_]
-    // TODO: [Initiate the loading of resources]
+    // From here we could pass the arguments to the emulator, if it was
+    // needed.
+
     return true;
   }
 
   // This crucial function forwards PPAPI events to the emulator.
   virtual bool HandleInputEvent(const pp::InputEvent& event) {
-      switch(event.GetType()) {
+      switch (event.GetType()) {
       case PP_INPUTEVENT_TYPE_MOUSEDOWN: {
           if (!mouse_locked_) {
               LockMouse(cc_factory_.NewCallback(
@@ -142,26 +146,26 @@ class UAEInstance : public pp::Instance, public pp::MouseLock {
           }
           break;
       }
-      case PP_INPUTEVENT_TYPE_KEYDOWN:
-      case PP_INPUTEVENT_TYPE_KEYUP:
-      case PP_INPUTEVENT_TYPE_CHAR: {
+
+      case PP_INPUTEVENT_TYPE_KEYDOWN: {
           pp::KeyboardInputEvent key_event(event);
           uint32_t modifiers = event.GetModifiers();
           uint32_t keycode = key_event.GetKeyCode();
           if (keycode == 70 /* 'f' */ &&
               (modifiers & PP_INPUTEVENT_MODIFIER_SHIFTKEY) &&
               (modifiers & PP_INPUTEVENT_MODIFIER_CONTROLKEY)) {
-              printf("Fullscreen toggle.\n"); fflush(stdout);
+              printf("Fullscreen toggle.\n");
               if (fullscreen_.IsFullscreen()) {
-                  // Leaving full-screen mode also unlocks the mouse if it was locked.
+                  // Leaving full-screen mode also unlocks the mouse if it was
+                  // locked.
                   if (!fullscreen_.SetFullscreen(false)) {
-                      printf("Could not leave fullscreen mode.\n"); fflush(stdout);
+                      printf("Could not leave fullscreen mode.\n");
                   }
               } else {
                   if (!fullscreen_.SetFullscreen(true)) {
-                      printf("Could not set fullscreen mode.\n"); fflush(stdout);
+                      printf("Could not set fullscreen mode.\n");
                   } else {
-                      printf("Fullscreen mode set.\n"); fflush(stdout);
+                      printf("Fullscreen mode set.\n");
                   }
               }
               return true;
@@ -184,9 +188,10 @@ class UAEInstance : public pp::Instance, public pp::MouseLock {
       return true;
   }
 
-  virtual void HandleMessage (const pp::Var &message) {
+  virtual void HandleMessage(const pp::Var &message) {
       if (!message.is_string()) {
-          PostMessage("Warning: non-string message posted to NaCl module - ignoring.\n");
+          PostMessage("Warning: non-string message posted to NaCl module "
+                      "- ignoring.\n");
           return;
       }
       handle_message(message.AsString().c_str());
@@ -197,17 +202,22 @@ class UAEInstance : public pp::Instance, public pp::MouseLock {
   // size changes. We ignore these calls except for the first
   // invocation, which we use to start the game.
   virtual void DidChangeView(const pp::Rect& position, const pp::Rect& clip) {
-    if (!first_changed_view_) return;
-    first_changed_view_ = false;
-
+      if (first_changed_view_) {
+          first_changed_view_ = false;
 #ifdef USE_SDL
-    // Make SDL aware of the Pepper instance.
-    /* TODO(cstefansen): do not ifdef; this should just call an 'init' function
-     * in the current gfx-dep or something.
-     */
-    SDL_NACL_SetInstance(pp_instance(), width_, height_);
+          // Make SDL aware of the Pepper instance.
+          // TODO(cstefansen): do not ifdef; this should just call an 'init'
+          // function in the current gfx-dep or something.
+          SDL_NACL_SetInstance(pp_instance(), width_, height_);
 #endif
-    StartUAEInNewThread(0);
+          StartUAEInNewThread(0);
+          return;
+      }
+
+      // Send resize message to emulator.
+      std::stringstream msg;
+      msg << "resize " << position.width() << " " << position.height();
+      HandleMessage(pp::Var(msg.str()));
   }
 
   virtual void MouseLockLost() {
@@ -237,7 +247,8 @@ class UAEInstance : public pp::Instance, public pp::MouseLock {
       request.SetAllowCredentials(true);
       request.SetAllowCrossOriginRequests(true);
 
-      int32_t result = loader.Open(request, pp::CompletionCallback::CompletionCallback());
+      int32_t result =
+          loader.Open(request, pp::CompletionCallback::CompletionCallback());
       if (PP_OK != result) {
           printf("Could not open file %s. PP error %d.\n", name, result);
           return 0;
@@ -250,7 +261,10 @@ class UAEInstance : public pp::Instance, public pp::MouseLock {
       static const int32_t BUFFER_SIZE = 65536;
       char buf[BUFFER_SIZE];
       do {
-          result = loader.ReadResponseBody(buf, BUFFER_SIZE, pp::CompletionCallback::CompletionCallback());
+          result = loader.ReadResponseBody(buf,
+                                          BUFFER_SIZE,
+                                          pp::CompletionCallback
+                                              ::CompletionCallback());
           if (result > 0) {
               std::vector<char>::size_type pos = dst.size();
               dst.resize(pos + result);
@@ -258,15 +272,36 @@ class UAEInstance : public pp::Instance, public pp::MouseLock {
           }
       } while (result > 0);
 
-
       printf("%s: got HTTP status code %d and %d bytes while loading %s.\n",
              (status_code == 200 ? "Success" : "Failed"), status_code,
              dst.size(), name);
 
       if (status_code == 200) {
-          *data = (char*) malloc(sizeof(char) * dst.size());
+#ifdef ENABLE_BUILD_KEY
+          // Detect naive XOR encryption and decrypt if needed.
+          char encryption_marker[] = "AMIGA_RULEZ_XORENC";
+          const int kEncryptionMarkerLen =
+              sizeof(encryption_marker) - 1; /* No \0 terminator. */
+          int adjusted_len = dst.size() - kEncryptionMarkerLen;
+
+          if (adjusted_len >= 0 &&
+              !memcmp(encryption_marker, dst.data(), kEncryptionMarkerLen)) {
+              *data = reinterpret_cast<char*>(malloc(sizeof(char) *
+                                                     adjusted_len));
+              for(std::vector<char>::size_type i = 0;
+                  i < adjusted_len; ++i) {
+                  (*data)[i] = dst[i + kEncryptionMarkerLen] ^
+                      build_key[i % build_key_len];
+              }
+              return adjusted_len;
+          }
+#endif  // ENABLE_BUILD_KEY
+
+          *data = reinterpret_cast<char*>(malloc(sizeof(char) *
+                                                 dst.size()));
           std::copy(dst.begin(), dst.end(), *data);
           return dst.size();
+
       } else {
           *data = NULL;
           return 0;
@@ -274,7 +309,8 @@ class UAEInstance : public pp::Instance, public pp::MouseLock {
   }
 
   const void *GetInterface(const char *interface_name) {
-      PPB_GetInterface get_interface_function = pp::Module::Get()->get_browser_interface();
+      PPB_GetInterface get_interface_function =
+          pp::Module::Get()->get_browser_interface();
       return get_interface_function(interface_name);
   }
 };
@@ -302,15 +338,15 @@ PP_Instance NaCl_GetInstance() {
 }
 
 class UAEModule : public pp::Module {
-public:
+ public:
     UAEModule() : pp::Module() {}
     virtual ~UAEModule() {
         glTerminatePPAPI();
     }
 
     virtual bool Init() {
-        // Ensure stdout is line-buffered.
-        setvbuf(stdout, (char *)NULL, _IOLBF, 0);
+        // Force stdout to be line-buffered (not the default in glibc).
+        setvbuf(stdout, NULL, _IOLBF, 0);
         return glInitializePPAPI(get_browser_interface()) == GL_TRUE;
     }
 
@@ -324,5 +360,3 @@ Module* CreateModule() {
     return new UAEModule();
 }
 }  // namespace pp
-
-#endif // __native_client__

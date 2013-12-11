@@ -1677,7 +1677,7 @@ static bool load_extendedkickstart (const TCHAR *romextfile, int type)
 		extendedkickmem_type = EXTENDED_ROM_CD32;
 	} else if (need_uae_boot_rom () != 0xf00000) {
 		extendedkickmem_type = EXTENDED_ROM_CDTV;
-		}	
+		}
 	} else {
 		extendedkickmem_type = type;
 	}
@@ -1775,13 +1775,17 @@ static void patch_kick (void)
 		kickstart_fix_checksum (kickmemory, kickmem_size);
 }
 
+#ifndef __native_client__
+/* Do not use AROS ROM in Native Client as it is under an uncommon license.
+ * (It also increases the size of the binary.)
+ */
 extern unsigned char arosrom[];
 extern unsigned int arosrom_len;
 extern int seriallog;
 static bool load_kickstart_replacement (void)
 {
 	struct zfile *f;
-	
+
 	f = zfile_fopen_data ("aros.gz", arosrom_len, arosrom);
 	if (!f) {
 		write_log ("KS Replacement: AROS open failed\n");
@@ -1810,6 +1814,8 @@ static bool load_kickstart_replacement (void)
 #endif
 	return true;
 }
+#endif  /* __native_client__ */
+
 
 static int load_kickstart (void)
 {
@@ -1818,8 +1824,12 @@ static int load_kickstart (void)
 	int patched = 0;
 
 	cloanto_rom = 0;
-	if (!_tcscmp (currprefs.romfile, ":AROS"))
+#ifndef __native_client__
+	if (!_tcscmp (currprefs.romfile, ":AROS")) {
 		return load_kickstart_replacement ();
+	}
+#endif  /* __native_client__ */
+
 	f = read_rom_name (currprefs.romfile);
 	_tcscpy (tmprom, currprefs.romfile);
 	if (f == NULL) {
@@ -2503,9 +2513,13 @@ void memory_reset (void)
 		if (!load_kickstart ()) {
 			if (_tcslen (currprefs.romfile) > 0) {
 				write_log ("Failed to open '%s'\n", currprefs.romfile);
+#ifndef __native_client__
 				gui_message ("Could not load system ROM, trying system ROM replacement.\n");
+#endif
 			}
+#ifndef __native_client__
 			load_kickstart_replacement ();
+#endif
 		} else {
 			struct romdata *rd = getromdatabydata (kickmemory, kickmem_size);
 			if (rd) {

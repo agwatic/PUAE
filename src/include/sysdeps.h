@@ -15,8 +15,6 @@
 #ifndef UAE_INCLUDE_SYSDEPS_H
 #define UAE_INCLUDE_SYSDEPS_H
 
-//#include "sysconfig.h"
-
 #define ECS_DENISE
 
 #ifdef JIT
@@ -203,8 +201,8 @@ extern void gettimeofday( struct timeval *tv, void *blah );
 #define O_RDWR   _O_RDWR
 #define O_CREAT  _O_CREAT
 #define O_TRUNC  _O_TRUNC
-#define strcasecmp _tcsicmp 
-#define strncasecmp _tcsncicmp 
+#define strcasecmp _tcsicmp
+#define strncasecmp _tcsncicmp
 #define W_OK 0x2
 #define R_OK 0x4
 #define STAT struct stat
@@ -434,4 +432,4 @@ extern void xfree (const void*);
 #define _vsntprintf vsnprintf
 #define max(a,b) ((a) > (b) ? (a) : (b))
 #define _tcstod strtod
-#endif /* UAE_INCLUDE_SYSDEPS_H */
+#endif  /* UAE_INCLUDE_SYSDEPS_H */

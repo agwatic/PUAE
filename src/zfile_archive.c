@@ -27,6 +27,9 @@
 #if defined(__FreeBSD__)
 #include <time.h>
 #include <sys/time.h>
+#endif
+
+#if defined(__native_client__)
 #include <sys/nacl_syscalls.h>
 #endif
 
@@ -134,7 +137,7 @@ struct zfile *archive_access_select (struct znode *parent, struct zfile *zf, uns
 	zn = &zv->root;
 	while (zn) {
 		int isok = 1;
-		
+
 		diskimg = -1;
 		if (zn->type != ZNODE_FILE)
 			isok = 0;
@@ -293,7 +296,7 @@ struct zvolume *archive_directory_tar (struct zfile *z)
 			break;
 		if (block[0] == 0)
 			break;
-			
+
 		if (!memcmp (block + 257, "ustar  ", 8))
 			ustar = 1;
 		name[0] = 0;
@@ -671,7 +674,7 @@ struct zvolume *archive_directory_plain (struct zfile *z)
 	zai.flags = -1;
 	zfile_fseek(z, 0, SEEK_END);
 	zai.size = zfile_ftell (z);
-	zai.t = 
+	zai.t =
 	zfile_fseek(z, 0, SEEK_SET);
 	zfile_fread(id, sizeof id, 1, z);
 	zfile_fseek(z, 0, SEEK_SET);
@@ -1252,7 +1255,7 @@ struct zfile *archive_access_adf (struct znode *zn)
 				bsize = size;
 			zfile_fread (dst, bsize, 1, adf->z);
 			dst += bsize;
-			size -= bsize; 
+			size -= bsize;
 		}
 
 		xfree (sfsblocks);
@@ -1457,14 +1460,14 @@ int isfat (uae_u8 *p)
 #define SECS_PER_MIN    60
 #define SECS_PER_HOUR   (60 * 60)
 #define SECS_PER_DAY    (SECS_PER_HOUR * 24)
-#define UNIX_SECS_1980  315532800L   
+#define UNIX_SECS_1980  315532800L
 #if BITS_PER_LONG == 64
 #define UNIX_SECS_2108  4354819200L
 #endif
 /* days between 1.1.70 and 1.1.80 (2 leap days) */
-#define DAYS_DELTA      (365 * 10 + 2)         
+#define DAYS_DELTA      (365 * 10 + 2)
 /* 120 (2100 - 1980) isn't leap year */
-#define YEAR_2100       120 
+#define YEAR_2100       120
 #define IS_LEAP_YEAR(y) (!((y) & 3) && (y) != YEAR_2100)
 
 /* Linear day numbers of the respective 1sts in non-leap years. */
@@ -1483,7 +1486,7 @@ static time_t fat_time_fat2unix (uae_u16 time, uae_u16 date, int fat12)
 		month = (date >> 7) & 0x0f;
 		day = (date >> 11);
 	} else {
-		year  = date >> 9;  
+		year  = date >> 9;
 		month = max(1, (date >> 5) & 0xf);
 		day   = max(1, date & 0x1f) - 1;
 	}

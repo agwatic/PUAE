@@ -697,4 +697,4 @@ STATIC_INLINE void fuzzy_memset_le32_1 (void *p, uae_u32 c, int offset, int len)
 #include "od-amiga/amiga-kludges.h"
 #endif
 
-#endif /* UAE_INCLUDE_OPTIONS_H */
+#endif  /* UAE_INCLUDE_OPTIONS_H */

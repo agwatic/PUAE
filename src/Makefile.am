@@ -2,7 +2,7 @@ AM_CFLAGS = @UAE_CFLAGS@
 AM_CPPFLAGS = @UAE_CPPFLAGS@
 AM_CPPFLAGS += -I$(top_srcdir)/src/include -I$(top_builddir)/src -I$(top_srcdir)/src -I$(top_srcdir)
 LIBS = -lpthread -lstdc++
-if !TARGET_NACL # = Using Native Client/Pepper
+if !TARGET_NACL  # Native Client can only use its own versions of the libraries. 
 LIBS += -L/usr/lib
 endif
 if IS_QT
@@ -180,7 +180,10 @@ uae_SOURCES = \
 	native2amiga.c disk.c crc32.c savestate.c arcadia.c cdtv.c cd32_fmv.c \
 	uaeexe.c uaelib.c uaeresource.c uaeserial.c fdi2raw.c hotkeys.c amax.c \
 	ar.c driveclick.c enforcer.c misc.c uaenet.c a2065.c gayle.c ncr_scsi.c \
-	missing.c readcpu.c aros.rom.c hrtmon.rom.c
+	missing.c readcpu.c hrtmon.rom.c
+if !TARGET_NACL  # Do not include AROS ROM in Native Client. 
+uae_SOURCES += aros.rom.c
+endif
 
 EXTRA_uae_SOURCES = \
 	bsdsocket.c bsdsocket-posix-new.c build68k.c catweasel.c cdrom.c \

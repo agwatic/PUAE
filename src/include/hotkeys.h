@@ -42,4 +42,4 @@ static inline void handle_hotkey_event (int event, int state)
     handle_input_event (event, state, 0, 0);
 }
 
-#endif /* UAE_INCLUDE_HOTKEYS_H */
+#endif  /* UAE_INCLUDE_HOTKEYS_H */

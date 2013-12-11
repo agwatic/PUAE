@@ -942,7 +942,7 @@ void cfgfile_save_options (struct zfile *f, struct uae_prefs *p, int type)
 		cfgfile_dwrite (f, "chipset", "ocs");
 	if (p->chipset_refreshrate > 0)
 		cfgfile_write (f, "chipset_refreshrate", "%d", p->chipset_refreshrate);
-		
+
 	for (i = 0; i < MAX_CHIPSET_REFRESH_TOTAL; i++) {
 		if (p->cr[i].rate <= 0)
 			continue;
@@ -1592,7 +1592,7 @@ static int cfgfile_parse_host (struct uae_prefs *p, TCHAR *option, TCHAR *value)
 		|| cfgfile_path (option, value, "floppy1soundext", p->floppyslots[1].dfxclickexternal, sizeof p->floppyslots[1].dfxclickexternal / sizeof (TCHAR))
 		|| cfgfile_path (option, value, "floppy2soundext", p->floppyslots[2].dfxclickexternal, sizeof p->floppyslots[2].dfxclickexternal / sizeof (TCHAR))
 		|| cfgfile_path (option, value, "floppy3soundext", p->floppyslots[3].dfxclickexternal, sizeof p->floppyslots[3].dfxclickexternal / sizeof (TCHAR))
-		|| 
+		||
 #endif
 		   cfgfile_string (option, value, "gfx_display_name", p->gfx_display_name, sizeof p->gfx_display_name / sizeof (TCHAR))
 		|| cfgfile_string (option, value, "config_window_title", p->config_window_title, sizeof p->config_window_title / sizeof (TCHAR))
@@ -1603,7 +1603,7 @@ static int cfgfile_parse_host (struct uae_prefs *p, TCHAR *option, TCHAR *value)
 	if (cfgfile_yesno (option, value, "sound_auto", &p->sound_auto)
 #ifdef DEBUGGER
 		|| cfgfile_yesno (option, value, "use_debugger", &p->start_debugger)
-#endif 
+#endif
 		|| cfgfile_yesno (option, value, "sound_stereo_swap_paula", &p->sound_stereo_swap_paula)
 		|| cfgfile_yesno (option, value, "sound_stereo_swap_ahi", &p->sound_stereo_swap_ahi)
 		|| cfgfile_yesno (option, value, "avoid_cmov", &p->avoid_cmov)
@@ -1956,7 +1956,7 @@ static int cfgfile_parse_host (struct uae_prefs *p, TCHAR *option, TCHAR *value)
 	if (_tcscmp (option, "displaydata") == 0 || _tcscmp (option, "displaydata_pal") == 0 || _tcscmp (option, "displaydata_ntsc") == 0) {
 	    _tcsncpy (tmpbuf, value, sizeof tmpbuf / sizeof (TCHAR) - 1);
 	    tmpbuf[sizeof tmpbuf / sizeof (TCHAR) - 1] = '\0';
-	
+
 	    int vert = -1, horiz = -1, lace = -1, ntsc = -1, framelength = -1, vsync = -1;
 	    bool locked = false;
 	    bool rtg = false;
@@ -1968,7 +1968,7 @@ static int cfgfile_parse_host (struct uae_prefs *p, TCHAR *option, TCHAR *value)
 	    for (;;) {
 	      TCHAR *next = _tcschr (tmpp, ',');
 	      TCHAR *equals = _tcschr (tmpp, '=');
-	
+
 	      if (!next)
 	        next = end;
 	      if (equals == NULL || equals > next)
@@ -1976,7 +1976,7 @@ static int cfgfile_parse_host (struct uae_prefs *p, TCHAR *option, TCHAR *value)
 	      else
 	        equals++;
 	      *next = 0;
-	
+
 	      if (rate < 0)
 	        rate = _tstof (tmpp);
 	      else if (!_tcsnicmp (tmpp, "v=", 2))
@@ -2045,7 +2045,7 @@ static int cfgfile_parse_host (struct uae_prefs *p, TCHAR *option, TCHAR *value)
 	    }
 	    return 1;
 	  }
-	
+
 	return 0;
 }
 
@@ -2195,7 +2195,7 @@ struct uaedev_config_info *add_filesys_config (struct uae_prefs *p, int index,
 	xfree (s);
 	return uci;
 }
-#endif
+#endif  /* FILESYS */
 
 static void parse_addmem (struct uae_prefs *p, TCHAR *buf, int num)
 {
@@ -3921,8 +3921,6 @@ static void default_prefs_mini (struct uae_prefs *p, int type)
 	p->bogomem_size = 0x00080000;
 }
 
-#define ll() printf("---- %s: %s(%d)\n", __FILE__, __FUNCTION__, __LINE__); fflush(stdout);
-
 void default_prefs (struct uae_prefs *p, int type)
 {
 	int i;
@@ -4121,26 +4119,19 @@ void default_prefs (struct uae_prefs *p, int type)
 	_tcscpy (p->floppyslots[2].df, "df2.adf");
 	_tcscpy (p->floppyslots[3].df, "df3.adf");
 
-	ll();
 	configure_rom (p, roms, 0);
 	_tcscpy (p->romfile, "kick.rom");
-	ll();
 	_tcscpy (p->romextfile, "");
-	ll();
 	_tcscpy (p->romextfile2, "");
-    ll();
-    p->romextfile2addr = 0;
+	p->romextfile2addr = 0;
         _tcscpy (p->flashfile, "");
 #ifdef ACTION_REPLAY
         _tcscpy (p->cartfile, "");
 #endif
-    ll();
 
 	_tcscpy (p->path_rom.path[0], "./");
 	_tcscpy (p->path_floppy.path[0], "./");
 	_tcscpy (p->path_hardfile.path[0], "./");
-
-    ll();
 
 	p->prtname[0] = 0;
 	p->sername[0] = 0;
@@ -4202,7 +4193,6 @@ void default_prefs (struct uae_prefs *p, int type)
 	p->input_tablet = TABLET_OFF;
 	p->input_magic_mouse = 0;
 	p->input_magic_mouse_cursor = 0;
-    ll();
 
 	inputdevice_default_prefs (p);
 
@@ -4236,24 +4226,18 @@ void default_prefs (struct uae_prefs *p, int type)
 	  cr->ntsc = 1;
 	  cr->locked = false;
 	  _tcscpy (cr->label, "NTSC");
-    ll();
 
 	zfile_fclose (default_file);
 	default_file = NULL;
-    ll();
-
 	f = zfile_fopen_empty (NULL, "configstore", 100000);
 	if (f) {
 		uaeconfig++;
-	    ll();
-#if !defined(__pnacl__)
+#ifndef __pnacl__
 	    /* TODO(cstefansen): Enable saving files for PNaCl build. */
 	    cfgfile_save_options (f, p, 0);
-#endif /* !defined(__pnacl__) */
-	    ll();
+#endif  /* !__pnacl__ */
 		uaeconfig--;
 		cfg_write (&zero, f);
-	    ll();
 		default_file = f;
 	}
 }

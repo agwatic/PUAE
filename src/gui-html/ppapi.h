@@ -1,11 +1,17 @@
-// TODO: insert header
+/*
+ * UAE - The Un*x Amiga Emulator
+ *
+ * PPAPI module and instance for running in Chrome.
+ *
+ * Copyright 2012, 2013 Christian Stefansen
+ */
 
-#ifndef UAE_PPAPI_H_
-#define UAE_PPAPI_H_
-
-#include "ppapi/c/ppb_instance.h"
+#ifndef SRC_GUI_HTML_PPAPI_H_
+#define SRC_GUI_HTML_PPAPI_H_
 
 #include <stddef.h>
+
+#include "ppapi/c/ppb_instance.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,4 +25,4 @@ PP_Instance NaCl_GetInstance(void);
 }
 #endif
 
-#endif // UAE_PPAPI_H_
+#endif  // SRC_GUI_HTML_PPAPI_H_

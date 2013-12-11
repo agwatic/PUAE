@@ -9,18 +9,27 @@
 
 #include "gui.h"
 
+#include <limits.h>
+#include <stdlib.h>
+
 #include "inputdevice.h"
 #include "options.h"
+#include "sounddep/sound.h"
 #include "sysdeps.h"
 #include "threaddep/thread.h"
 #include "uae.h"
 #include "writelog.h"
 
-static uae_sem_t gui_sem;           // For mutual exclusion on pref settings
-static smp_comm_pipe from_gui_pipe; // For sending messages from the GUI to UAE
+/* For mutual exclusion on pref settings. */
+static uae_sem_t gui_sem;
+/* For sending messages from the GUI to UAE. */
+static smp_comm_pipe from_gui_pipe;
 
+static char *gui_romname = 0;
 static char *new_disk_string[4];
-static char *gui_romname;
+static unsigned int pause_uae = 0;
+
+int using_restricted_cloanto_rom = 1;
 
 /*
  * Supported messages. Sent from the GUI to UAE via from_gui_pipe.
@@ -38,7 +47,8 @@ enum uae_commands {
     UAECMD_INSERTDISK,
     UAECMD_SELECT_ROM,
     UAECMD_SAVESTATE_LOAD,
-    UAECMD_SAVESTATE_SAVE
+    UAECMD_SAVESTATE_SAVE,
+    UAECMD_RESIZE
 };
 
 /* handle_message()
@@ -48,29 +58,31 @@ enum uae_commands {
  * messages posted from JavaScript to handle_message().
  */
 int handle_message(const char* msg) {
-    // Grammar for messages from the UI:
-    //
-    // message ::= 'insert' drive fileURL
-    //           | 'rom' fileURL
-    //           | 'connect' port input
-    //           | 'eject' drive
-    //           | 'reset'
-    // device  ::= 'kickstart' | drive
-    // drive   ::= 'df0' | 'df1'
-    // port    ::= 'port0' | 'port1'
-    // input   ::= 'mouse' | 'joy0' | 'joy1' | 'kbd0' | 'kbd1'
-    // fileURL ::= <a URL of the form file://>
+    /* Grammar for messages from the UI:
+     *
+     * message ::= 'insert' drive fileURL
+     *           | 'rom' fileURL
+     *           | 'connect' port input
+     *           | 'eject' drive
+     *           | 'reset' | 'pause' | 'resume'
+     *           | 'resize' <width> <height>
+     * device  ::= 'kickstart' | drive
+     * drive   ::= 'df0' | 'df1'
+     * port    ::= 'port0' | 'port1'
+     * input   ::= 'mouse' | 'joy0' | 'joy1' | 'kbd0' | 'kbd1'
+     * fileURL ::= <a URL of the form blob://>
+     */
 
     DEBUG_LOG("%s\n", msg);
 
-    // TODO(cstefansen): scan the string instead of these shenanigans.
+    /* TODO(cstefansen): scan the string instead of these shenanigans. */
 
-    // Copy to non-const buffer
+    /* Copy to non-const buffer. */
     char buf[1024];
     (void) strncpy(buf, msg, sizeof(buf) - 1);
-    buf[sizeof(buf) - 1] = '\0'; // Ensure NUL termination
+    buf[sizeof(buf) - 1] = '\0'; /* Ensure NUL termination. */
 
-    // Tokenize message up to 3 tokens (max given the grammar)
+    /* Tokenize message up to 3 tokens (max given the grammar). */
     int i = 0;
     char *t[3], *token, *rest = NULL, *sep = " ";
 
@@ -80,9 +92,22 @@ int handle_message(const char* msg) {
         t[i] = token;
     }
 
-    // Pipe message to UAE main thread
+    /* Pipe message to UAE main thread. */
     if (i == 1 && !strcmp(t[0], "reset")) {
         write_comm_pipe_int(&from_gui_pipe, UAECMD_RESET, 1);
+    } else if (i == 1 && !strcmp(t[0], "pause")) {
+        /* It would be cleaner to call pause_sound and resume_sound in
+         * gui_handle_events below, i.e, on the emulator thread. However,
+         * if we're pausing because the tab is no longer in the foreground,
+         * no graphics flush calls will unblock and no graphics callbacks will
+         * be delivered until the tab is back in front. This means that the
+         * emulator is probably already stuck in some call and won't get to
+         * our UI request to pause the sound. */
+        pause_sound();
+        write_comm_pipe_int(&from_gui_pipe, UAECMD_PAUSE, 1);
+    } else if (i == 1 && !strcmp(t[0], "resume")) {
+        resume_sound();
+        write_comm_pipe_int(&from_gui_pipe, UAECMD_RESUME, 1);
     } else if (i == 2 && !strcmp(t[0], "eject")) {
         int drive_num;
         if (!strcmp(t[1], "df0")) {
@@ -94,6 +119,17 @@ int handle_message(const char* msg) {
         }
         write_comm_pipe_int(&from_gui_pipe, UAECMD_EJECTDISK, 0);
         write_comm_pipe_int(&from_gui_pipe, drive_num, 1);
+    } else if (i == 3 && !strcmp(t[0], "resize")) {
+        long width = strtol(t[1], NULL, 10);
+        long height = strtol(t[2], NULL, 10);
+        if (width > INT_MAX || height > INT_MAX || errno == ERANGE
+            || width <= 0  || height <= 0) {
+            write_log("Could not parse width/height in message: %s\n", msg);
+            return -1;
+        }
+        write_comm_pipe_int(&from_gui_pipe, UAECMD_RESIZE, 0);
+        write_comm_pipe_int(&from_gui_pipe, (int) width, 0);
+        write_comm_pipe_int(&from_gui_pipe, (int) height, 1);
     } else if (i == 3 && !strcmp(t[0], "insert")) {
         int drive_num;
         if (!strcmp(t[1], "df0")) {
@@ -116,7 +152,7 @@ int handle_message(const char* msg) {
             free (gui_romname);
         gui_romname = strdup(t[1]);
         uae_sem_post(&gui_sem);
-        write_comm_pipe_int(&from_gui_pipe, UAECMD_SELECT_ROM, 0);
+        write_comm_pipe_int(&from_gui_pipe, UAECMD_SELECT_ROM, 1);
     } else if (i == 3 && !strcmp(t[0], "connect")) {
         int port_num;
         if (!strcmp(t[1], "port0")) {
@@ -136,9 +172,11 @@ int handle_message(const char* msg) {
                 JSEM_END;
 
         changed_prefs.jports[port_num].id = input_device;
-        if (changed_prefs.jports[port_num].id != currprefs.jports[port_num].id) {
-            // It's a little fishy that the typical way to update input
-            // devices doesn't use the comm pipe.
+        if (changed_prefs.jports[port_num].id !=
+            currprefs.jports[port_num].id) {
+            /* It's a little fishy that the typical way to update input
+             * devices doesn't use the comm pipe.
+             */
             inputdevice_updateconfig (&changed_prefs);
             inputdevice_config_change();
         }
@@ -207,67 +245,65 @@ void gui_led (int num, int on) {}
  */
 void gui_handle_events (void)
 {
-    // read GUI command if any
+    /* Read GUI command if any. */
 
-    // process it, e.g., call uae_reset()
-    while (comm_pipe_has_data (&from_gui_pipe)) {
+    /* Process it, e.g., call uae_reset(). */
+    while (comm_pipe_has_data (&from_gui_pipe) || pause_uae) {
         int cmd = read_comm_pipe_int_blocking (&from_gui_pipe);
-        printf("gui_handle_events: %i\n", cmd);
+        DEBUG_LOG("gui_handle_events: %i\n", cmd);
 
         switch (cmd) {
         case UAECMD_EJECTDISK: {
             int n = read_comm_pipe_int_blocking (&from_gui_pipe);
-            uae_sem_wait (&gui_sem);
+            uae_sem_wait(&gui_sem);
             changed_prefs.floppyslots[n].df[0] = '\0';
-            uae_sem_post (&gui_sem);
-// TODO(cstefansen): Wire up notifications from UAE to GUI
-//            if (pause_uae) {
-//                /* When UAE is running it will notify the GUI when a disk has been inserted
-//                 * or removed itself. When UAE is paused, however, we need to do this ourselves
-//                 * or the change won't be realized in the GUI until UAE is resumed */
-//                write_comm_pipe_int (&to_gui_pipe, GUICMD_DISKCHANGE, 0);
-//                write_comm_pipe_int (&to_gui_pipe, n, 1);
-//            }
+            uae_sem_post(&gui_sem);
             break;
         }
         case UAECMD_INSERTDISK: {
             int n = read_comm_pipe_int_blocking (&from_gui_pipe);
-            uae_sem_wait (&gui_sem);
+            if (using_restricted_cloanto_rom) {
+                write_log("Loading other disks is not permitted under the "
+                          "license for the built-in Cloanto Kickstart "
+                          "ROM.\n");
+                break;
+            }
+            uae_sem_wait(&gui_sem);
             strncpy (changed_prefs.floppyslots[n].df, new_disk_string[n], 255);
             free (new_disk_string[n]);
             new_disk_string[n] = 0;
             changed_prefs.floppyslots[n].df[255] = '\0';
-            uae_sem_post (&gui_sem);
+            uae_sem_post(&gui_sem);
+            break;
         }
-// TODO(cstefansen): Wire up notifications from UAE to GUI
-//            if (pause_uae) {
-//                /* When UAE is running it will notify the GUI when a disk has been inserted
-//                 * or removed itself. When UAE is paused, however, we need to do this ourselves
-//                 * or the change won't be realized in the GUI until UAE is resumed */
-//                write_comm_pipe_int (&to_gui_pipe, GUICMD_DISKCHANGE, 0);
-//                write_comm_pipe_int (&to_gui_pipe, n, 1);
-//            }
-            break;
         case UAECMD_RESET:
-            uae_reset(0);
+            uae_reset(1);
             break;
-// TODO(cstefansen): Implement pausing/resuming.
-//        case UAECMD_PAUSE:
-//            pause_uae = 1;
-//            uae_pause ();
-//            break;
-//        case UAECMD_RESUME:
-//            pause_uae = 0;
-//            uae_resume ();
-//            break;
+        case UAECMD_PAUSE:
+            pause_uae = 1;
+            break;
+        case UAECMD_RESUME:
+            pause_uae = 0;
+            break;
         case UAECMD_SELECT_ROM:
-            uae_sem_wait (&gui_sem);
-            strncpy (changed_prefs.romfile, gui_romname, 255);
+            uae_sem_wait(&gui_sem);
+            strncpy(changed_prefs.romfile, gui_romname, 255);
             changed_prefs.romfile[255] = '\0';
-            free (gui_romname);
+            free(gui_romname);
             gui_romname = 0;
-            uae_sem_post (&gui_sem);
+
+            /* Switching to non-restricted ROM; rebooting. */
+            using_restricted_cloanto_rom = 0;
+            uae_reset(1);
+
+            uae_sem_post(&gui_sem);
             break;
+        case UAECMD_RESIZE: {
+            int width = read_comm_pipe_int_blocking(&from_gui_pipe);
+            int height = read_comm_pipe_int_blocking(&from_gui_pipe);
+            screen_size_changed(width, height);
+            break;
+        }
         default:
             break;
         }

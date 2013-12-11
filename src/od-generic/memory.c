@@ -11,7 +11,7 @@
 #include "sysdeps.h"
 
 #include "options.h"
-#if !defined ANDROID && !defined __native_client__
+#if !defined(ANDROID) && !defined(__native_client__)
 #include <sys/sysctl.h>
 #endif
 #include "include/memory.h"

@@ -7,7 +7,7 @@
 *.lib
 *.a
 
-# Shared objects (inc. Windows DLLs)
+# Shared objects (incl. Windows DLLs)
 *.dll
 *.so
 *.so.*
@@ -17,7 +17,7 @@
 *.exe
 *.out
 *.app
-src/uae
+/src/uae
 
 # Autotools
 /aclocal.m4
@@ -32,9 +32,84 @@ src/uae
 /src/tools/config.status
 /src/tools/configure
 
+/m4/libtool.m4
+/m4/ltoptions.m4
+/m4/ltsugar.m4
+/m4/ltversion.m4
+/m4/lt~obsolete.m4
+
 # Living life dangerously... :-)
-Makefile
 Makefile.in
+
+# Generated Makefiles
+/Makefile
+/src/Makefile
+/src/archivers/dms/Makefile
+/src/archivers/zip/Makefile
+/src/caps/Makefile
+/src/gfx-amigaos/Makefile
+/src/gfx-beos/Makefile
+/src/gfx-cocoa/Makefile
+/src/gfx-curses/Makefile
+/src/gfx-pepper/Makefile
+/src/gfx-sdl/Makefile
+/src/gfx-x11/Makefile
+/src/gui-beos/Makefile
+/src/gui-cocoa/Makefile
+/src/gui-gtk/Makefile
+/src/gui-html/Makefile
+/src/gui-muirexx/Makefile
+/src/gui-none/Makefile
+/src/gui-qt/Makefile
+/src/jd-amigainput/Makefile
+/src/jd-amigaos/Makefile
+/src/jd-beos/Makefile
+/src/jd-linuxold/Makefile
+/src/jd-none/Makefile
+/src/jd-pepper/Makefile
+/src/jd-sdl/Makefile
+/src/keymap/Makefile
+/src/md-68k/Makefile
+/src/md-amd64-gcc/Makefile
+/src/md-generic/Makefile
+/src/md-i386-gcc/Makefile
+/src/md-ppc-gcc/Makefile
+/src/md-ppc/Makefile
+/src/od-amiga/Makefile
+/src/od-beos/Makefile
+/src/od-generic/Makefile
+/src/od-linux/Makefile
+/src/od-macosx/Makefile
+/src/od-win32/Makefile
+/src/sd-alsa/Makefile
+/src/sd-amigaos/Makefile
+/src/sd-beos/Makefile
+/src/sd-none/Makefile
+/src/sd-pepper/Makefile
+/src/sd-sdl/Makefile
+/src/sd-solaris/Makefile
+/src/sd-uss/Makefile
+/src/td-amigaos/Makefile
+/src/td-beos/Makefile
+/src/td-none/Makefile
+/src/td-posix/Makefile
+/src/td-sdl/Makefile
+/src/td-win32/Makefile
+/src/test/Makefile
+/src/tools/Makefile
+
+# Generated symbolic links
+/src/gfxdep
+/src/guidep
+/src/joydep
+/src/machdep
+/src/osdep
+/src/sounddep
+/src/threaddep
+
+# Mac build
+/src/od-macosx/Credits.rtf
+/src/od-macosx/Info.plist
 
 # PNaCl
 .deps
@@ -44,3 +119,6 @@ Makefile.in
 
 # Emacs
 *~
+
+# Eclipse
+/.settings

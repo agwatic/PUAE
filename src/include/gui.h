@@ -89,4 +89,4 @@ typedef enum {
     NUMSG_NOCAPS, NUMSG_OLDCAPS, NUMSG_KICKREP, NUMSG_KICKREPNO
 } notify_user_msg;*/
 
-#endif /* UAE_INCLUDE_GUI_H */
+#endif  /* UAE_INCLUDE_GUI_H */

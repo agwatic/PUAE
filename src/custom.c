@@ -1730,7 +1730,7 @@ STATIC_INLINE void update_fetch (int until, int fm)
 		&& (fetch_cycle & fetchstart_mask) == (fm_maxplane & fetchstart_mask)
 		&& !badmode
 #ifdef DEBUGGER
-                && !debug_dma
+		&& !debug_dma
 #endif
 # if 0
 		/* @@@ We handle this case, but the code would be simpler if we
@@ -7209,7 +7209,7 @@ void check_prefs_changed_custom (void)
 	currprefs.gfx_framerate = changed_prefs.gfx_framerate;
 	if (currprefs.turbo_emulation != changed_prefs.turbo_emulation)
 		warpmode (changed_prefs.turbo_emulation);
-	if (inputdevice_config_change_test ()) 
+	if (inputdevice_config_change_test ())
 		inputdevice_copyconfig (&changed_prefs, &currprefs);
 	currprefs.immediate_blits = changed_prefs.immediate_blits;
 	currprefs.collision_level = changed_prefs.collision_level;

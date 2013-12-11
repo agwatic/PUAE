@@ -197,6 +197,14 @@ void SERDAT (uae_u16 w)
 #if SERIALDEBUG > 2
     write_log ("SERDAT: wrote 0x%04x\n", w);
 #endif
+#ifdef __native_client__
+    /* The only use of the serial port in the Portable Native Client port
+     * is to see output from the AROS ROMs. We leave logging to stdout on by
+     * default, since (a) this is important information and (b) there won't be
+     * enough other data traffic on the serial port to affect performance.
+     */
+    write_log("%c", z);
+#endif /* __native_client__ */
 
     serdat|=0x2000; /* Set TBE in the SERDATR ... */
     intreq|=1;      /* ... and in INTREQ register */
@@ -344,11 +352,13 @@ uae_u16 serial_writestatus (int old, int nw)
     if ((old & 0x80) == 0x00 && (nw & 0x80) == 0x80)
 		serial_dtr_off();
 
+#if SERIALDEBUG > 0
     if ((old & 0x40) != (nw & 0x40))
 		write_log ("RTS %s.\n", ((nw & 0x40) == 0x40) ? "set" : "cleared");
 
     if ((old & 0x10) != (nw & 0x10))
 		write_log ("CTS %s.\n", ((nw & 0x10) == 0x10) ? "set" : "cleared");
+#endif  /* SERIALDEBUG > 0 */
 
     return nw; /* This value could also be changed here */
 }
