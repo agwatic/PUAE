@@ -12,6 +12,7 @@ var statusMessages = [
   "reticulating splines",
   "calling the 80s",
   "polishing floppy disks",
+  "yes, it'll load faster the second time",
   "finding Chuck Norris",
   "debugging guru meditations",
   "preparing garden gnomes",

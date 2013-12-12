@@ -197,7 +197,7 @@ int handle_message(const char* msg) {
  */
 int gui_init (void)
 {
-    init_comm_pipe (&from_gui_pipe, 20 /* size */, 1 /* chunks */);
+    init_comm_pipe (&from_gui_pipe, 8192 /* size */, 1 /* chunks */);
     uae_sem_init (&gui_sem, 0, 1);
     return 0;
 }
