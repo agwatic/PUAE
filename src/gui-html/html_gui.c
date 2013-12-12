@@ -109,10 +109,12 @@ int handle_message(const char* msg) {
          * be delivered until the tab is back in front. This means that the
          * emulator is probably already stuck in some call and won't get to
          * our UI request to pause the sound. */
-        pause_sound();
+        /* TODO(cstefansen)People are reporting pausing/resuming problems; let's
+           not do this until investigated. */
+        /* pause_sound(); */
         write_comm_pipe_int(&from_gui_pipe, UAECMD_PAUSE, 1);
     } else if (i == 1 && !strcmp(t[0], "resume")) {
-        resume_sound();
+        /* resume_sound(); */
         write_comm_pipe_int(&from_gui_pipe, UAECMD_RESUME, 1);
     } else if (i == 2 && !strcmp(t[0], "eject")) {
         int drive_num;
@@ -256,6 +258,7 @@ void gui_handle_events (void)
 
     /* Process it, e.g., call uae_reset(). */
     while (comm_pipe_has_data (&from_gui_pipe) || gui_pause_uae) {
+        DEBUG_LOG("gui_handle_events: trying to read...\n");
         int cmd = read_comm_pipe_int_blocking (&from_gui_pipe);
         DEBUG_LOG("gui_handle_events: %i\n", cmd);
 
