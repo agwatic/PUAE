@@ -27,7 +27,9 @@ static smp_comm_pipe from_gui_pipe;
 
 static char *gui_romname = 0;
 static char *new_disk_string[4];
-static unsigned int pause_uae = 0;
+static unsigned int gui_pause_uae = 0;
+
+static int gui_initialized = 0;
 
 int using_restricted_cloanto_rom = 1;
 
@@ -74,6 +76,10 @@ int handle_message(const char* msg) {
      */
 
     DEBUG_LOG("%s\n", msg);
+    if (!gui_initialized) {
+        DEBUG_LOG("GUI message refused; not yet initialized.\n");
+        return -1;
+    }
 
     /* TODO(cstefansen): scan the string instead of these shenanigans. */
 
@@ -199,6 +205,7 @@ int gui_init (void)
 {
     init_comm_pipe (&from_gui_pipe, 8192 /* size */, 1 /* chunks */);
     uae_sem_init (&gui_sem, 0, 1);
+    gui_initialized = 1;
     return 0;
 }
 
@@ -248,7 +255,7 @@ void gui_handle_events (void)
     /* Read GUI command if any. */
 
     /* Process it, e.g., call uae_reset(). */
-    while (comm_pipe_has_data (&from_gui_pipe) || pause_uae) {
+    while (comm_pipe_has_data (&from_gui_pipe) || gui_pause_uae) {
         int cmd = read_comm_pipe_int_blocking (&from_gui_pipe);
         DEBUG_LOG("gui_handle_events: %i\n", cmd);
 
@@ -258,7 +265,7 @@ void gui_handle_events (void)
             uae_sem_wait(&gui_sem);
             changed_prefs.floppyslots[n].df[0] = '\0';
             uae_sem_post(&gui_sem);
-            break;
+            continue;
         }
         case UAECMD_INSERTDISK: {
             int n = read_comm_pipe_int_blocking (&from_gui_pipe);
@@ -266,7 +273,7 @@ void gui_handle_events (void)
                 write_log("Loading other disks is not permitted under the "
                           "license for the built-in Cloanto Kickstart "
                           "ROM.\n");
-                break;
+                continue;
             }
             uae_sem_wait(&gui_sem);
             strncpy (changed_prefs.floppyslots[n].df, new_disk_string[n], 255);
@@ -274,17 +281,17 @@ void gui_handle_events (void)
             new_disk_string[n] = 0;
             changed_prefs.floppyslots[n].df[255] = '\0';
             uae_sem_post(&gui_sem);
-            break;
+            continue;
         }
         case UAECMD_RESET:
             uae_reset(1);
-            break;
+            break; // Stop GUI command processing until UAE is ready again.
         case UAECMD_PAUSE:
-            pause_uae = 1;
-            break;
+            gui_pause_uae = 1;
+            continue;
         case UAECMD_RESUME:
-            pause_uae = 0;
-            break;
+            gui_pause_uae = 0;
+            continue;
         case UAECMD_SELECT_ROM:
             uae_sem_wait(&gui_sem);
             strncpy(changed_prefs.romfile, gui_romname, 255);
@@ -297,15 +304,16 @@ void gui_handle_events (void)
             uae_reset(1);
 
             uae_sem_post(&gui_sem);
-            break;
+            continue;
         case UAECMD_RESIZE: {
             int width = read_comm_pipe_int_blocking(&from_gui_pipe);
             int height = read_comm_pipe_int_blocking(&from_gui_pipe);
             screen_size_changed(width, height);
-            break;
+            continue;
         }
         default:
-            break;
+            DEBUG_LOG("Unknown command %d received from GUI.\n", cmd);
+            continue;
         }
     }
 }

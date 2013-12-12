@@ -573,6 +573,11 @@ void screenshot (int mode, int doprepare) {}
 /* Returns 0 if the queue is full, the event cannot be parsed, or the event
  * was not handled. */
 int push_event(PP_Resource event) {
+    if (!ppb_input_event_interface || !ppb_mouse_event_interface ||
+        !ppb_keyboard_event_interface) {
+        DEBUG_LOG("Refusing to process pre-initialization input event.\n");
+        return 0;
+    }
     PP_InputEvent_Type type = ppb_input_event_interface->GetType(event);
     switch (type) {
     case PP_INPUTEVENT_TYPE_MOUSEDOWN:

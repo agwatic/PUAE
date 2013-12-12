@@ -27,6 +27,8 @@ static PP_Instance pp_instance;
 static PP_Resource image_data;
 static PP_Resource graphics_context;
 
+static int graphics_initialized = 0;
+
 static const struct PP_Point origo = {0, 0};
 static struct PP_Point top = {0, 0};
 static struct PP_Rect src_rect;
@@ -35,8 +37,9 @@ static struct PP_Size screenSize; /* The actual resolution of the embed. */
 static uint32_t alpha_mask;
 
 void screen_size_changed_2d(int32_t width, int32_t height) {
-    if ((screenSize.width == width && screenSize.height == height)
-        || width < canvasSize.width || height < canvasSize.height) {
+    if (!graphics_initialized ||
+        (screenSize.width == width && screenSize.height == height) ||
+        width < canvasSize.width || height < canvasSize.height) {
         return;
     }
     screenSize.width = width;
@@ -186,5 +189,6 @@ int graphics_2d_subinit(uint32_t *Rmask, uint32_t *Gmask, uint32_t *Bmask,
     gfxvidinfo.emergmem = 0;
     gfxvidinfo.flush_screen = pepper_graphics2d_flush_screen;
 
+    graphics_initialized = 1;
     return 1;
 }

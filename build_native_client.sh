@@ -190,7 +190,7 @@ if [ "$1" = "run" ] || [ "$1" = "debug" ]; then
     # Chrome flags.
     # Add the flag --disable-gpu to simulate system without OpenGLES support.
     CHROME_FLAGS='--user-data-dir=../chrome-profile \
-        --no-first-run'
+        --no-first-run --disable-gpu'
     # Some other convenient command-line flags to use:
     #   --show-fps-counter --incognito
 
